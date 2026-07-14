@@ -3,7 +3,8 @@
 ## Setup (before presenting)
 
 ```bash
-npm install && npm run build
+npm install
+npm run build
 npm run test-pages   # terminal 1 — http://localhost:8000
 npm run backend      # terminal 2 — http://127.0.0.1:8787
 ```
