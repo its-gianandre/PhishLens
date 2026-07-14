@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>PhishLens</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header>
+    <span class="logo">🔎 PhishLens</span>
+    <label class="toggle" title="Show raw evidence and score breakdown">
+      <input type="checkbox" id="technicalMode" /> Technical
+    </label>
+  </header>
+
+  <main id="main">
+    <p class="muted">Analyzing…</p>
+  </main>
+
+  <section id="settings" hidden>
+    <h2>Settings</h2>
+    <label><input type="checkbox" id="aiExplanations" /> AI explanations</label>
+    <label><input type="checkbox" id="submissionWarnings" /> Warn before risky submissions</label>
+    <label><input type="checkbox" id="threatIntel" /> Known-threat lookup</label>
+    <label><input type="checkbox" id="saveHistory" /> Save analysis history</label>
+    <div class="row">
+      <button id="trustDomain" class="small"></button>
+      <button id="clearData" class="small danger">Delete stored results</button>
+    </div>
+  </section>
+
+  <footer>
+    <button id="toggleSettings" class="link">Settings</button>
+    <span class="muted" id="version"></span>
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>

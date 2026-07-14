@@ -1,0 +1,16 @@
+<!doctype html>
+<!-- Harmless local test pages for PhishLens. All endpoints are dummies; use only fake credentials. -->
+<html lang="en">
+<head><meta charset="utf-8"><title>PhishLens test pages</title></head>
+<body style="font-family: sans-serif; max-width: 640px; margin: 40px auto;">
+  <h1>PhishLens test pages</h1>
+  <p>Harmless phishing simulations. Expected results are documented in <a href="EXPECTED.md">EXPECTED.md</a>.</p>
+  <ol>
+    <li><a href="normal-login.html">Normal login page</a> — expected: Low</li>
+    <li><a href="fake-microsoft-login.html">Fake Microsoft login</a> — expected: High</li>
+    <li><a href="external-form.html">External form submission</a> — expected: Caution</li>
+    <li><a href="urgency-page.html">Urgent account warning</a> — expected: Caution</li>
+    <li><a href="combined-phish.html">Combined phishing simulation</a> — expected: Critical</li>
+  </ol>
+</body>
+</html>

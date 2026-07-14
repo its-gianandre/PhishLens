@@ -1,0 +1,177 @@
+import { loadSettings, saveSettings } from '../shared/settings';
+import type { AnalysisResult, ExplainRequest, ExplainResponse, Settings } from '../shared/types';
+
+const BACKEND_URL = 'http://127.0.0.1:8787/explain';
+
+const main = document.getElementById('main')!;
+const settingsSection = document.getElementById('settings')!;
+
+function el<T extends HTMLElement = HTMLElement>(id: string): T {
+  return document.getElementById(id) as T;
+}
+
+function escapeHtml(text: string): string {
+  return text.replace(/[&<>"']/g, (ch) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]!
+  ));
+}
+
+async function getActiveTabResult(): Promise<{ tabId: number | null; result: AnalysisResult | null }> {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (tab?.id == null) return { tabId: null, result: null };
+  const response = await chrome.runtime.sendMessage({ type: 'GET_RESULT', tabId: tab.id });
+  return { tabId: tab.id, result: response?.result ?? null };
+}
+
+function renderNoResult(): void {
+  main.innerHTML = `<p class="muted">No analysis for this page. PhishLens runs on regular
+    http(s) pages once they finish loading.</p>`;
+}
+
+function renderResult(result: AnalysisResult, settings: Settings): void {
+  const brandLine = result.suspectedBrand
+    ? `<div class="meta">Presents itself as: <strong>${escapeHtml(result.suspectedBrand)}</strong>${
+        settings.technicalMode && result.brandConfidence != null
+          ? ` <span class="muted">(confidence ${result.brandConfidence})</span>` : ''
+      }</div>`
+    : '';
+
+  const findings = result.signals.length
+    ? `<h2>Findings (${result.signals.length})</h2>
+       <ul class="findings">${result.signals
+         .map((s) => `<li class="sev-${s.severity}">${escapeHtml(s.description)}${
+           settings.technicalMode ? `<br><code>${escapeHtml(s.id)}: ${escapeHtml(s.evidence)}</code>` : ''
+         }</li>`)
+         .join('')}</ul>`
+    : '<h2>Findings</h2><p class="muted">No phishing indicators detected.</p>';
+
+  const breakdown = settings.technicalMode && result.scoreBreakdown.length
+    ? `<h2>Score breakdown</h2>
+       <table class="breakdown">${result.scoreBreakdown
+         .map((line) => `<tr><td>${escapeHtml(line.label)}</td><td>+${line.points}</td></tr>`)
+         .join('')}
+         <tr><td><strong>Total (clamped 0–100)</strong></td><td><strong>${result.score}</strong></td></tr>
+       </table>`
+    : '';
+
+  const aiSection = settings.aiExplanations
+    ? `<h2>AI explanation</h2>
+       <button id="explainBtn">Explain this result</button>
+       <div id="aiBox" class="ai-box" hidden></div>`
+    : '';
+
+  main.innerHTML = `
+    <div class="scorecard">
+      <div class="score-dial ${result.classification}">${result.score}</div>
+      <div>
+        <span class="chip ${result.classification}">${result.classification} risk</span>
+        <div class="meta">Domain: <code>${escapeHtml(result.domain || '(unknown)')}</code></div>
+        ${brandLine}
+        ${result.overridden ? '<div class="meta muted">Trusted-domain override active.</div>' : ''}
+      </div>
+    </div>
+    ${findings}
+    <h2>Recommended action</h2>
+    <div class="action">${escapeHtml(result.recommendedAction)}</div>
+    ${breakdown}
+    ${aiSection}`;
+
+  document.getElementById('explainBtn')?.addEventListener('click', () => {
+    void fetchExplanation(result, settings);
+  });
+}
+
+async function fetchExplanation(result: AnalysisResult, settings: Settings): Promise<void> {
+  const box = el('aiBox');
+  box.hidden = false;
+  box.textContent = 'Generating explanation…';
+
+  const request: ExplainRequest = {
+    score: result.score,
+    classification: result.classification,
+    domain: result.domain,
+    suspectedBrand: result.suspectedBrand,
+    signals: result.signals.map((s) => ({ id: s.id, description: s.description, evidence: s.evidence })),
+    scoreBreakdown: result.scoreBreakdown,
+  };
+
+  try {
+    const response = await fetch(BACKEND_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+    });
+    if (!response.ok) throw new Error(`backend returned ${response.status}`);
+    const explanation: ExplainResponse = await response.json();
+
+    const parts = [
+      explanation.summary,
+      '',
+      ...explanation.reasons.map((reason) => `• ${reason}`),
+      '',
+      `Recommended: ${explanation.recommendedAction}`,
+    ];
+    if (settings.technicalMode) {
+      parts.push('', `Technical: ${explanation.technicalExplanation}`);
+      if (explanation.limitations.length) {
+        parts.push('', 'Limitations:', ...explanation.limitations.map((l) => `• ${l}`));
+      }
+    }
+    box.textContent = parts.join('\n');
+  } catch {
+    box.textContent =
+      'Could not reach the explanation backend. Start it with "npm run backend" ' +
+      '(the risk score above is computed locally and does not depend on it).';
+  }
+}
+
+async function bindSettings(result: AnalysisResult | null): Promise<void> {
+  const settings = await loadSettings();
+
+  const toggles: Array<keyof Settings> = [
+    'technicalMode', 'aiExplanations', 'submissionWarnings', 'threatIntel', 'saveHistory',
+  ];
+  for (const key of toggles) {
+    const box = el<HTMLInputElement>(key);
+    box.checked = Boolean(settings[key]);
+    box.addEventListener('change', async () => {
+      const next = await saveSettings({ [key]: box.checked });
+      if (result) renderResult(result, next);
+    });
+  }
+
+  const trustBtn = el<HTMLButtonElement>('trustDomain');
+  if (result?.domain) {
+    const trusted = settings.approvedDomains.includes(result.domain);
+    trustBtn.textContent = trusted ? `Untrust ${result.domain}` : `Trust ${result.domain}`;
+    trustBtn.addEventListener('click', async () => {
+      const current = await loadSettings();
+      const approved = current.approvedDomains.includes(result.domain)
+        ? current.approvedDomains.filter((d) => d !== result.domain)
+        : [...current.approvedDomains, result.domain];
+      await saveSettings({ approvedDomains: approved });
+      trustBtn.textContent = approved.includes(result.domain)
+        ? `Untrust ${result.domain}` : `Trust ${result.domain}`;
+    });
+  } else {
+    trustBtn.hidden = true;
+  }
+
+  el<HTMLButtonElement>('clearData').addEventListener('click', async () => {
+    await chrome.runtime.sendMessage({ type: 'CLEAR_DATA' });
+    window.close();
+  });
+
+  el('toggleSettings').addEventListener('click', () => {
+    settingsSection.hidden = !settingsSection.hidden;
+  });
+}
+
+(async () => {
+  el('version').textContent = `v${chrome.runtime.getManifest().version}`;
+  const settings = await loadSettings();
+  const { result } = await getActiveTabResult();
+  if (result) renderResult(result, settings);
+  else renderNoResult();
+  await bindSettings(result);
+})();

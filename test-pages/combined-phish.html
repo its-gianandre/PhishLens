@@ -1,0 +1,22 @@
+<!doctype html>
+<!-- Harmless combined phishing simulation: brand impersonation + urgency + external form. Dummy endpoint; fake credentials only. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Microsoft account security alert — verify now</title>
+  <meta name="description" content="Unusual sign-in activity detected on your Microsoft account.">
+</head>
+<body style="font-family: 'Segoe UI', sans-serif; max-width: 420px; margin: 60px auto;">
+  <h1 style="color:#0067b8;">Microsoft</h1>
+  <h2>Unusual sign-in activity detected</h2>
+  <p>Your account will be suspended unless you act immediately. Verify your
+    password within 12 hours to avoid account closure.</p>
+  <form action="http://127.0.0.1:9999/collect" method="post">
+    <p><input type="email" name="email" placeholder="Email address" style="width:100%"></p>
+    <p><input type="password" name="password" placeholder="Password" style="width:100%"></p>
+    <p><input type="text" name="otp_code" placeholder="Authentication code (if enabled)" style="width:100%"></p>
+    <p><button type="submit" style="background:#0067b8;color:#fff;border:0;padding:8px 24px;">Verify account</button></p>
+  </form>
+  <p style="color:#666;">This is an official notice from the Microsoft security team.</p>
+</body>
+</html>
