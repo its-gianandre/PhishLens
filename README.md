@@ -75,7 +75,9 @@ top frame only).
 ## Team
 
 Gian Fernandez
+
 Augustin Birladeanu
+
 Saumit Guduguntla
 
 ## Demo
