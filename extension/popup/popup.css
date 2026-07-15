@@ -13,7 +13,7 @@
 * { box-sizing: border-box; }
 
 body {
-  width: 380px;
+  width: 440px;
   margin: 0;
   background: var(--bg);
   color: var(--text);
@@ -35,13 +35,16 @@ footer { border-top: 1px solid var(--border); }
 .toggle { color: var(--muted); user-select: none; }
 
 main {
-  max-height: 460px;
+  max-height: 500px;
   overflow-y: auto;
   padding: 10px 14px;
   scrollbar-gutter: stable;
 }
 
 .scorecard {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   display: flex;
   gap: 14px;
   align-items: center;
@@ -50,6 +53,7 @@ main {
   border-radius: 10px;
   padding: 10px;
   margin-bottom: 10px;
+  box-shadow: 0 5px 12px rgba(0, 0, 0, .28);
 }
 
 .score-dial {
