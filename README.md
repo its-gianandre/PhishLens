@@ -72,6 +72,12 @@ crowdsourced reporting, OAuth analysis, autonomous threat investigation,
 and analysis inside nested iframes (the content script currently runs in the
 top frame only).
 
+## Team
+
+Gian Fernandez
+Augustin Birladeanu
+Saumit Guduguntla
+
 ## Demo
 
 See [DEMO.md](DEMO.md) for the presentation sequence.
