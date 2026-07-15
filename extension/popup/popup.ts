@@ -46,18 +46,20 @@ function renderResult(result: AnalysisResult, settings: Settings): void {
     : '<h2>Findings</h2><p class="muted">No phishing indicators detected.</p>';
 
   const breakdown = settings.technicalMode && result.scoreBreakdown.length
-    ? `<h2>Score breakdown</h2>
+    ? `<details class="disclosure">
+       <summary>Score breakdown <span>${result.score}/100</span></summary>
        <table class="breakdown">${result.scoreBreakdown
          .map((line) => `<tr><td>${escapeHtml(line.label)}</td><td>+${line.points}</td></tr>`)
          .join('')}
          <tr><td><strong>Total (clamped 0–100)</strong></td><td><strong>${result.score}</strong></td></tr>
-       </table>`
+       </table>
+       </details>`
     : '';
 
-  const aiSection = settings.aiExplanations
-    ? `<h2>AI explanation</h2>
+  const explanationSection = settings.aiExplanations
+    ? `<h2>Explanation</h2>
        <button id="explainBtn">Explain this result</button>
-       <div id="aiBox" class="ai-box" hidden></div>`
+       <div id="explanationBox" class="explanation-box" hidden></div>`
     : '';
 
   main.innerHTML = `
@@ -74,7 +76,7 @@ function renderResult(result: AnalysisResult, settings: Settings): void {
     <h2>Recommended action</h2>
     <div class="action">${escapeHtml(result.recommendedAction)}</div>
     ${breakdown}
-    ${aiSection}`;
+    ${explanationSection}`;
 
   document.getElementById('explainBtn')?.addEventListener('click', () => {
     void fetchExplanation(result, settings);
@@ -82,7 +84,7 @@ function renderResult(result: AnalysisResult, settings: Settings): void {
 }
 
 async function fetchExplanation(result: AnalysisResult, settings: Settings): Promise<void> {
-  const box = el('aiBox');
+  const box = el('explanationBox');
   box.hidden = false;
   box.textContent = 'Generating explanation…';
 
@@ -104,20 +106,21 @@ async function fetchExplanation(result: AnalysisResult, settings: Settings): Pro
     if (!response.ok) throw new Error(`backend returned ${response.status}`);
     const explanation: ExplainResponse = await response.json();
 
-    const parts = [
-      explanation.summary,
-      '',
-      ...explanation.reasons.map((reason) => `• ${reason}`),
-      '',
-      `Recommended: ${explanation.recommendedAction}`,
-    ];
-    if (settings.technicalMode) {
-      parts.push('', `Technical: ${explanation.technicalExplanation}`);
-      if (explanation.limitations.length) {
-        parts.push('', 'Limitations:', ...explanation.limitations.map((l) => `• ${l}`));
-      }
-    }
-    box.textContent = parts.join('\n');
+    const reasons = explanation.reasons.length
+      ? `<ul>${explanation.reasons.map((reason) => `<li>${escapeHtml(reason)}</li>`).join('')}</ul>`
+      : '';
+    const technicalDetails = settings.technicalMode
+      ? `<details class="explanation-details">
+           <summary>Technical details and limitations</summary>
+           <p><strong>Technical:</strong> ${escapeHtml(explanation.technicalExplanation)}</p>
+           ${explanation.limitations.length
+             ? `<p><strong>Limitations</strong></p><ul>${explanation.limitations
+               .map((limitation) => `<li>${escapeHtml(limitation)}</li>`).join('')}</ul>`
+             : ''}
+         </details>`
+      : '';
+
+    box.innerHTML = `<p>${escapeHtml(explanation.summary)}</p>${reasons}${technicalDetails}`;
   } catch {
     box.textContent =
       'Could not reach the explanation backend. Start it with "npm run backend" ' +
