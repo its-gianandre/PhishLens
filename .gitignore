@@ -9,3 +9,6 @@ backend/threat-intel/data/*.json.gz
 backend/threat-intel/data/*.csv
 backend/threat-intel/data/*.csv.gz
 backend/threat-intel/data/*.tmp
+
+# Deliberately committed, immutable PhishTank snapshot.
+!backend/threat-intel/data/phishtank-snapshot-2026-07-16.json.gz

@@ -94,6 +94,14 @@ ul.findings code {
   border-radius: 6px; padding: 8px 10px; margin-top: 8px;
 }
 
+.threat-intel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+.threat-intel.threat-match { border-left: 3px solid var(--critical); }
+
 table.breakdown { width: 100%; border-collapse: collapse; margin-top: 4px; }
 table.breakdown td { padding: 3px 4px; border-bottom: 1px solid var(--border); }
 table.breakdown td:last-child { text-align: right; font-variant-numeric: tabular-nums; }

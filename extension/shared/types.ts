@@ -94,7 +94,31 @@ export interface ScoreLine {
   points: number;
 }
 
+export type ThreatIntelProvider = 'phishtank';
+export type ThreatMatchType = 'exact-url' | 'hostname' | 'registrable-domain';
+
+export interface ThreatIntelFinding {
+  provider: ThreatIntelProvider;
+  available: boolean;
+  matched: boolean;
+  category: 'phishing' | null;
+  matchType: ThreatMatchType | null;
+  confidence: 'high' | 'medium' | 'low' | null;
+  targetBrand: string | null;
+  referenceUrl: string | null;
+  verificationTime: string | null;
+  submissionTime: string | null;
+}
+
+export interface ThreatIntelSummary {
+  status: 'disabled' | 'pending' | 'complete' | 'unavailable';
+  checkedAt: number | null;
+  findings: ThreatIntelFinding[];
+}
+
 export interface AnalysisResult {
+  /** Unique generation token used to discard late asynchronous enrichments. */
+  analysisId: string;
   url: string;
   /** Registrable domain of the page (eTLD+1). */
   domain: string;
@@ -107,6 +131,7 @@ export interface AnalysisResult {
   recommendedAction: string;
   /** True when an approved-domain override suppressed analysis. */
   overridden: boolean;
+  threatIntel: ThreatIntelSummary;
   analyzedAt: number;
 }
 
@@ -147,7 +172,17 @@ export interface AnalyzeMessage { type: 'ANALYZE'; evidence: PageEvidence; }
 export interface GetResultMessage { type: 'GET_RESULT'; tabId: number; }
 export interface ClearDataMessage { type: 'CLEAR_DATA'; }
 export interface GetHistoryMessage { type: 'GET_HISTORY'; }
-export type ExtensionMessage = AnalyzeMessage | GetResultMessage | ClearDataMessage | GetHistoryMessage;
+export interface ResultUpdatedMessage {
+  type: 'RESULT_UPDATED';
+  tabId: number;
+  result: AnalysisResult;
+}
+export type ExtensionMessage =
+  | AnalyzeMessage
+  | GetResultMessage
+  | ClearDataMessage
+  | GetHistoryMessage
+  | ResultUpdatedMessage;
 
 export interface ContentConfig {
   bannerThreshold: number;

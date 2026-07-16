@@ -1,0 +1,43 @@
+[
+  {
+    "phish_id": "1001",
+    "url": "HTTPS://Login.Example/login?campaign=alpha#fragment",
+    "phish_detail_url": "https://phishtank.example/phish/1001",
+    "submission_time": "2026-07-15T10:00:00Z",
+    "verified": "yes",
+    "verification_time": "2026-07-15T10:05:00Z",
+    "online": "yes",
+    "target": "Example Mail"
+  },
+  {
+    "phish_id": "1002",
+    "url": "https://offline.example/login",
+    "verified": "yes",
+    "online": "no",
+    "target": "Offline Example"
+  },
+  {
+    "phish_id": "1003",
+    "url": "https://unverified.example/login",
+    "verified": "no",
+    "online": "yes",
+    "target": "Unverified Example"
+  },
+  {
+    "phish_id": "1004",
+    "url": "not a valid URL",
+    "verified": "yes",
+    "online": "yes",
+    "target": "Malformed Example"
+  },
+  {
+    "phish_id": "1005",
+    "url": "https://login.example/another-path",
+    "phish_detail_url": "https://phishtank.example/phish/1005",
+    "submission_time": "2026-07-15T11:00:00Z",
+    "verified": "yes",
+    "verification_time": "2026-07-15T11:05:00Z",
+    "online": "yes",
+    "target": "Example Mail"
+  }
+]

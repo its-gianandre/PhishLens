@@ -8,6 +8,19 @@ Scores assume default settings (threat intel on, no approved-domain overrides).
 Loopback hosts are exempt from HTTP/port signals, so scores come from content,
 not from the pages being served locally.
 
+## Threat-intelligence UI checks
+
+With `npm run backend` running and the local feed loaded, the popup should show
+`Checking PhishTank...` without delaying the initial score. It should then show
+`No match found in the bundled snapshot` for these harmless local fixtures. If
+the backend or snapshot is unavailable, it should show `PhishTank lookup unavailable` while
+preserving the local score and warnings.
+
+An exact verified URL match adds one `known-malicious-url` signal and triggers
+normal deterministic rescoring. A hostname-only match is informational and
+must state that it did not independently increase the score. No-match wording
+must not claim the page is safe.
+
 ## Explanation UI checks
 
 Start the local explanation backend with `npm run backend`. For each page,
