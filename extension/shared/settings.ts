@@ -2,7 +2,7 @@ import type { Settings } from './types';
 
 export const DEFAULT_SETTINGS: Settings = {
   technicalMode: false,
-  aiExplanations: true,
+  explanations: true,
   saveHistory: false,
   submissionWarnings: true,
   threatIntel: true,

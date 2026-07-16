@@ -3,7 +3,7 @@
 *Project for OpenAI's Build Week.*
 
 A Chrome (Manifest V3) extension that detects phishing websites in real time
-using **rule-based detection plus explainable AI**. It answers four questions
+using **rule-based detection plus evidence-based explanations**. It answers four questions
 about every page:
 
 1. What organization does the page claim to represent?
@@ -17,7 +17,7 @@ explanation — never a black-box verdict.
 
 ```
 Webpage → Evidence extraction → Rule-based detection → Risk scoring
-        → AI explanation → Warning and recommended action
+        → Local explanation → Warning and recommended action
 ```
 
 ## Quick start
@@ -27,13 +27,20 @@ npm install
 npm run build        # bundles the extension into ./dist
 npm test             # 64 unit / integration / adversarial tests
 npm run test-pages   # harmless phishing simulations on http://localhost:8000
-npm run backend      # explanation backend (stub mode) on http://127.0.0.1:8787
+npm run backend      # local explanation backend on http://127.0.0.1:8787
 ```
 
 Load the extension: `chrome://extensions` → enable **Developer mode** →
 **Load unpacked** → select the `dist/` folder. Then open
 `http://localhost:8000/` and click through the test pages
 (expectations documented in `test-pages/EXPECTED.md`).
+
+## Local explanations
+
+The backend converts validated detector signals into plain-language and
+technical explanations using deterministic templates. Evidence citations are
+copied directly from the detected signals, and no paid external service or API
+key is required.
 
 ## Architecture
 
@@ -43,23 +50,21 @@ Load the extension: `chrome://extensions` → enable **Developer mode** →
 | Detectors | `extension/detectors/` | URL, brand-domain mismatch, sensitive forms, social-engineering language, known-threat lookup. Each returns structured **evidence** (`Signal[]`), never a score. |
 | Scoring | `extension/scoring/calculate-risk.ts` | The **only** place evidence becomes a number: per-signal weights + combination bonuses, clamped 0–100, banded into Low <30 ≤ Caution <60 ≤ High <80 ≤ Critical. |
 | UI | `extension/popup/`, `content/warning-banner.ts` | Popup with score/findings/breakdown; in-page banner (High/Critical only); submission interception with Cancel / Leave / View evidence / Proceed. |
-| Explainable AI | `backend/` | Receives structured signals, returns a plain-language + technical explanation. **Explains the verdict; never changes it.** Currently a deterministic stub — the swap point and system prompt for a real model are in `backend/explain.mjs`. |
+| Local explanation | `backend/` | Receives structured signals and returns a plain-language + technical explanation with evidence citations. **Explains the verdict; never changes it.** |
 
 ## Hard constraints (by design)
 
 - Never collects or stores: entered passwords, form values, cookies, auth
   tokens, full page HTML, or complete browsing history.
-- The AI layer never changes the risk score, invents signals, or invents
+- The explanation layer never changes the risk score, invents signals, or invents
   domain-age/reputation data. Evidence snippets are sanitized, truncated,
   and treated as untrusted (prompt-injection-resistant) input.
-- Any AI API key lives only in the backend environment, never in extension
-  code.
 - All webpage content is treated as attacker-controlled input
   (see `tests/adversarial.test.ts`).
 
 ## Settings & privacy
 
-The popup's Settings panel provides: technical mode, AI explanations on/off,
+The popup's Settings panel provides: technical mode, explanations on/off,
 submission warnings on/off, known-threat lookup on/off, optional history
 (off by default), per-domain trust overrides, and one-click deletion of all
 stored results.

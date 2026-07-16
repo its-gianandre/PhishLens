@@ -42,9 +42,6 @@ main {
 }
 
 .scorecard {
-  position: sticky;
-  top: 0;
-  z-index: 2;
   display: flex;
   gap: 14px;
   align-items: center;
@@ -53,7 +50,6 @@ main {
   border-radius: 10px;
   padding: 10px;
   margin-bottom: 10px;
-  box-shadow: 0 5px 12px rgba(0, 0, 0, .28);
 }
 
 .score-dial {
@@ -108,7 +104,8 @@ table.breakdown td:last-child { text-align: right; font-variant-numeric: tabular
   padding-top: 8px;
 }
 .disclosure > summary,
-.explanation-details > summary {
+.explanation-details > summary,
+.explanation-citations > summary {
   color: var(--muted);
   cursor: pointer;
   font-size: 12px;
@@ -129,6 +126,35 @@ table.breakdown td:last-child { text-align: right; font-variant-numeric: tabular
 .explanation-box li { margin: 3px 0; }
 .explanation-details { border-top: 1px solid var(--border); margin-top: 8px; padding-top: 8px; }
 .explanation-details[open] > summary { margin-bottom: 8px; }
+.explanation-source {
+  background: rgba(255,255,255,.06);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  display: inline-block;
+  font-size: 11px;
+  margin-bottom: 6px;
+  padding: 1px 7px;
+}
+.explanation-citations {
+  border-top: 1px solid var(--border);
+  margin-top: 8px;
+  padding-top: 8px;
+}
+.explanation-citations[open] > summary { margin-bottom: 6px; }
+.explanation-citations code {
+  background: rgba(255,255,255,.08);
+  border-radius: 4px;
+  display: inline-block;
+  font-size: 11px;
+  margin-right: 4px;
+  padding: 1px 5px;
+}
+.explanation-citations small {
+  color: var(--muted);
+  display: block;
+  overflow-wrap: anywhere;
+}
 
 footer {
   background: var(--bg);
@@ -140,6 +166,7 @@ button {
   background: var(--panel); color: var(--text); padding: 6px 12px; font-size: 12px;
 }
 button:hover { background: #2a2a36; }
+button:disabled { cursor: wait; opacity: .65; }
 button.link { border: none; background: none; color: var(--muted); text-decoration: underline; padding: 0; }
 button.small { font-size: 11px; padding: 4px 8px; }
 button.danger { color: var(--critical); }

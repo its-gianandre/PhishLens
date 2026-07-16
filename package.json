@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Chrome MV3 extension that detects phishing websites in real time using rule-based detection plus explainable AI.",
+  "description": "Chrome MV3 extension that detects phishing websites in real time using rule-based detection plus evidence-based explanations.",
   "scripts": {
     "build": "node build.mjs",
     "typecheck": "tsc --noEmit",

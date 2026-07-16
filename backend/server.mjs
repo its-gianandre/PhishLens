@@ -20,7 +20,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
   if (req.method === 'GET' && req.url === '/health') {
-    sendJson(res, 200, { ok: true, mode: 'stub' });
+    sendJson(res, 200, { ok: true, mode: 'local' });
     return;
   }
   if (req.method === 'POST' && req.url === '/explain') {
@@ -51,6 +51,6 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, '127.0.0.1', () => {
-  console.log(`PhishLens explanation backend (stub mode) on http://127.0.0.1:${PORT}`);
+  console.log(`PhishLens local explanation backend on http://127.0.0.1:${PORT}`);
   console.log('POST /explain with an ExplainRequest JSON body; GET /health for status.');
 });

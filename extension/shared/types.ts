@@ -122,7 +122,7 @@ export interface BrandEntry {
 
 export interface Settings {
   technicalMode: boolean;
-  aiExplanations: boolean;
+  explanations: boolean;
   saveHistory: boolean;
   submissionWarnings: boolean;
   threatIntel: boolean;
@@ -157,7 +157,7 @@ export interface ContentConfig {
 
 export interface AnalyzeResponse { result: AnalysisResult; config: ContentConfig; }
 
-// ---- Explainable-AI backend contract ----
+// ---- Local explanation backend contract ----
 
 export interface ExplainRequest {
   score: number;
@@ -168,11 +168,18 @@ export interface ExplainRequest {
   scoreBreakdown: ScoreLine[];
 }
 
+export interface ExplainCitation {
+  signalId: SignalId;
+  description: string;
+  evidence: string;
+}
+
 export interface ExplainResponse {
   summary: string;
   reasons: string[];
   recommendedAction: string;
   technicalExplanation: string;
   limitations: string[];
-  generatedBy: 'stub' | 'model';
+  /** Detector-owned evidence copied directly from the validated findings. */
+  citations: ExplainCitation[];
 }

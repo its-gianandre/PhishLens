@@ -95,7 +95,7 @@ export const RISK_BANDS: Array<{ min: number; classification: RiskClass }> = [
 ];
 
 export const RECOMMENDED_ACTIONS: Record<RiskClass, string> = {
-  Low: 'No obvious phishing indicators. Stay alert as usual.',
+  Low: 'No strong phishing indicators were found. Verify the address before signing in or entering sensitive information.',
   Caution:
     'Some suspicious indicators were found. Double-check the address bar before entering any personal information.',
   High:
