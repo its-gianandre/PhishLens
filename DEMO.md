@@ -48,10 +48,10 @@ Load `dist/` via `chrome://extensions` → Load unpacked. Pin the PhishLens icon
 
 ## Talking points
 
-- Deterministic engine + explainable AI: the score is reproducible and
-  auditable; AI only makes it understandable.
+- Deterministic engine + evidence-based explanation: the score and explanation
+  are reproducible, auditable, and grounded in the displayed findings.
 - Privacy: no entered values, cookies, tokens, or page HTML ever leave the
-  page; the AI backend receives only structured signal metadata.
+  page; the local backend receives only structured signal metadata.
 - Adversarially tested: split brand names, punycode look-alikes, hidden
   keywords, JS-intercepted forms, and prompt-injection attempts in page
   content (`npm test` — 64 tests).

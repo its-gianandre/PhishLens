@@ -56,7 +56,7 @@ function renderResult(result: AnalysisResult, settings: Settings): void {
        </details>`
     : '';
 
-  const explanationSection = settings.aiExplanations
+  const explanationSection = settings.explanations
     ? `<h2>Explanation</h2>
        <button id="explainBtn">Explain this result</button>
        <div id="explanationBox" class="explanation-box" hidden></div>`
@@ -85,8 +85,11 @@ function renderResult(result: AnalysisResult, settings: Settings): void {
 
 async function fetchExplanation(result: AnalysisResult, settings: Settings): Promise<void> {
   const box = el('explanationBox');
+  const button = el<HTMLButtonElement>('explainBtn');
   box.hidden = false;
   box.textContent = 'Generating explanation…';
+  button.disabled = true;
+  button.textContent = 'Generating…';
 
   const request: ExplainRequest = {
     score: result.score,
@@ -109,6 +112,18 @@ async function fetchExplanation(result: AnalysisResult, settings: Settings): Pro
     const reasons = explanation.reasons.length
       ? `<ul>${explanation.reasons.map((reason) => `<li>${escapeHtml(reason)}</li>`).join('')}</ul>`
       : '';
+    const citations = explanation.citations.length
+      ? `<details class="explanation-citations">
+           <summary>Evidence citations (${explanation.citations.length})</summary>
+           <ul>${explanation.citations.map((citation) => `
+             <li>
+               <code>${escapeHtml(citation.signalId)}</code>
+               <span>${escapeHtml(citation.description)}</span>
+               <small>${escapeHtml(citation.evidence)}</small>
+             </li>`).join('')}
+           </ul>
+         </details>`
+      : '';
     const technicalDetails = settings.technicalMode
       ? `<details class="explanation-details">
            <summary>Technical details and limitations</summary>
@@ -119,12 +134,19 @@ async function fetchExplanation(result: AnalysisResult, settings: Settings): Pro
              : ''}
          </details>`
       : '';
-
-    box.innerHTML = `<p>${escapeHtml(explanation.summary)}</p>${reasons}${technicalDetails}`;
+    box.innerHTML = `
+      <div class="explanation-source">Evidence-based local explanation</div>
+      <p>${escapeHtml(explanation.summary)}</p>
+      ${reasons}
+      ${citations}
+      ${technicalDetails}`;
   } catch {
     box.textContent =
       'Could not reach the explanation backend. Start it with "npm run backend" ' +
       '(the risk score above is computed locally and does not depend on it).';
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Regenerate explanation';
   }
 }
 
@@ -132,7 +154,7 @@ async function bindSettings(result: AnalysisResult | null): Promise<void> {
   const settings = await loadSettings();
 
   const toggles: Array<keyof Settings> = [
-    'technicalMode', 'aiExplanations', 'submissionWarnings', 'threatIntel', 'saveHistory',
+    'technicalMode', 'explanations', 'submissionWarnings', 'threatIntel', 'saveHistory',
   ];
   for (const key of toggles) {
     const box = el<HTMLInputElement>(key);
