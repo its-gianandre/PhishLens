@@ -169,6 +169,14 @@ footer {
   flex: none;
 }
 
+.report-link {
+  color: var(--caution);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.report-link:hover { text-decoration: underline; }
+
 button {
   cursor: pointer; border: 1px solid var(--border); border-radius: 6px;
   background: var(--panel); color: var(--text); padding: 6px 12px; font-size: 12px;
