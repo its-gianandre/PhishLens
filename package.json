@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "backend": "node backend/server.mjs",
+    "threat-intel:test-feed": "node backend/threat-intel/test-feed.mjs",
     "test-pages": "node test-pages/serve.mjs"
   },
   "devDependencies": {

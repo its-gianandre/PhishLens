@@ -25,9 +25,10 @@ Webpage → Evidence extraction → Rule-based detection → Risk scoring
 ```bash
 npm install
 npm run build        # bundles the extension into ./dist
-npm test             # 64 unit / integration / adversarial tests
+npm test             # unit / integration / adversarial tests
 npm run test-pages   # harmless phishing simulations on http://localhost:8000
-npm run backend      # local explanation backend on http://127.0.0.1:8787
+npm run backend      # local explanation + threat-intel backend on 127.0.0.1:8787
+npm run threat-intel:test-feed  # verify the local PhishTank feed
 ```
 
 Load the extension: `chrome://extensions` → enable **Developer mode** →
@@ -42,15 +43,52 @@ technical explanations using deterministic templates. Evidence citations are
 copied directly from the detected signals, and no paid external service or API
 key is required.
 
+## Local PhishTank threat intelligence
+
+PhishLens includes a dated, immutable PhishTank snapshot at:
+
+```text
+backend/threat-intel/data/phishtank-snapshot-2026-07-16.json.gz
+```
+
+This snapshot is deliberately committed so the integration works without a
+PhishTank account or application key. Other downloaded feed files remain
+ignored by Git. Provenance, hashes, counts, and limitations are documented in
+`backend/threat-intel/SNAPSHOT.md`.
+
+Verify the bundled snapshot before starting the extension:
+
+```bash
+npm run threat-intel:test-feed
+npm run backend
+```
+
+The backend decompresses and indexes the snapshot once at startup. `GET /health`
+reports whether PhishTank is available and the number of indexed URLs and
+hostnames without exposing the feed path.
+
+Page analysis remains local and appears immediately. When known-threat lookup
+is enabled, the service worker asynchronously asks the local backend to check
+the current URL. An exact verified URL match adds the existing
+`known-malicious-url` signal and the deterministic scoring engine recalculates
+the score. A hostname-only match is displayed as supporting information and
+does not independently add points.
+
+If the snapshot or backend is unavailable, the original heuristic result
+remains active. If a URL is absent, the popup says "No match found in the
+bundled snapshot"; absence from the snapshot does not establish that a page is
+safe. The snapshot does not update automatically and becomes less current over
+time.
+
 ## Architecture
 
 | Layer | Where | Role |
 | --- | --- | --- |
 | Evidence extraction | `extension/content/` | Collects URL, title, visible text, headings, alt text, and per-form metadata. Never collects entered values, cookies, tokens, or full HTML. |
-| Detectors | `extension/detectors/` | URL, brand-domain mismatch, sensitive forms, social-engineering language, known-threat lookup. Each returns structured **evidence** (`Signal[]`), never a score. |
+| Detectors | `extension/detectors/` | URL, brand-domain mismatch, sensitive forms, social-engineering language, and normalized PhishTank results. Each returns structured **evidence** (`Signal[]`), never a score. |
 | Scoring | `extension/scoring/calculate-risk.ts` | The **only** place evidence becomes a number: per-signal weights + combination bonuses, clamped 0–100, banded into Low <30 ≤ Caution <60 ≤ High <80 ≤ Critical. |
 | UI | `extension/popup/`, `content/warning-banner.ts` | Popup with score/findings/breakdown; in-page banner (High/Critical only); submission interception with Cancel / Leave / View evidence / Proceed. |
-| Local explanation | `backend/` | Receives structured signals and returns a plain-language + technical explanation with evidence citations. **Explains the verdict; never changes it.** |
+| Local backend | `backend/` | Loads the local PhishTank feed, provides URL lookups, and returns plain-language explanations. It never visits the checked URL or directly assigns a risk score. |
 
 ## Hard constraints (by design)
 
@@ -61,6 +99,8 @@ key is required.
   and treated as untrusted (prompt-injection-resistant) input.
 - All webpage content is treated as attacker-controlled input
   (see `tests/adversarial.test.ts`).
+- Browsing URLs are checked only against the local feed in this phase; they are
+  not sent to PhishTank or another third party.
 
 ## Settings & privacy
 

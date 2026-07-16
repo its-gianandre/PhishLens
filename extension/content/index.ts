@@ -1,6 +1,27 @@
-import type { AnalyzeResponse } from '../shared/types';
+import type {
+  AnalysisResult,
+  AnalyzeResponse,
+  ContentConfig,
+  ResultUpdatedMessage,
+} from '../shared/types';
 import { extractPageEvidence } from './extract-page';
 import { installSubmitGuard, showWarningBanner } from './warning-banner';
+
+let contentConfig: ContentConfig | null = null;
+
+function applyResult(result: AnalysisResult): void {
+  if (result.url !== location.href || !contentConfig) return;
+  if (result.score >= contentConfig.bannerThreshold) {
+    showWarningBanner(result);
+  }
+  if (contentConfig.submissionWarnings && result.score >= contentConfig.guardThreshold) {
+    installSubmitGuard(result);
+  }
+}
+
+chrome.runtime.onMessage.addListener((message: ResultUpdatedMessage) => {
+  if (message?.type === 'RESULT_UPDATED') applyResult(message.result);
+});
 
 (async () => {
   try {
@@ -12,12 +33,8 @@ import { installSubmitGuard, showWarningBanner } from './warning-banner';
     if (!response?.result) return;
 
     const { result, config } = response;
-    if (result.score >= config.bannerThreshold) {
-      showWarningBanner(result);
-    }
-    if (config.submissionWarnings && result.score >= config.guardThreshold) {
-      installSubmitGuard(result);
-    }
+    contentConfig = config;
+    applyResult(result);
   } catch {
     // Extension context invalidated (e.g. reload during analysis) — nothing to do.
   }

@@ -199,15 +199,6 @@ export const URL_SHORTENERS = new Set([
   'rb.gy', 'cutt.ly', 'shorturl.at',
 ]);
 
-/**
- * Local known-threat list (registrable domains or hostnames).
- * Stub for a real threat-intel feed — see detectors/threat-intel.ts.
- */
-export const KNOWN_MALICIOUS_URLS = new Set([
-  'phish.example.test',
-  'malicious-demo.invalid',
-]);
-
 /** Second-level public suffixes for simplified registrable-domain extraction. */
 export const MULTI_PART_TLDS = new Set([
   'co.uk', 'org.uk', 'ac.uk', 'gov.uk', 'me.uk',

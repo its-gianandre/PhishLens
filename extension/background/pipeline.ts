@@ -1,7 +1,6 @@
 import { detectBrand } from '../detectors/brand-detector';
 import { detectFormSignals } from '../detectors/form-detector';
 import { detectLanguageSignals } from '../detectors/language-detector';
-import { lookupKnownThreat } from '../detectors/threat-intel';
 import { detectUrlSignals } from '../detectors/url-detector';
 import { calculateRisk } from '../scoring/calculate-risk';
 import { RECOMMENDED_ACTIONS } from '../shared/constants';
@@ -18,6 +17,8 @@ export interface PipelineOptions {
  * Pure function (no chrome.* APIs) so it is directly unit-testable.
  */
 export function runAnalysis(evidence: PageEvidence, opts: PipelineOptions): AnalysisResult {
+  const analyzedAt = Date.now();
+  const analysisId = `${analyzedAt}-${Math.random().toString(36).slice(2)}`;
   let domain = '';
   try {
     domain = getRegistrableDomain(new URL(evidence.url).hostname);
@@ -27,6 +28,7 @@ export function runAnalysis(evidence: PageEvidence, opts: PipelineOptions): Anal
 
   if (domain && opts.approvedDomains.includes(domain)) {
     return {
+      analysisId,
       url: evidence.url,
       domain,
       score: 0,
@@ -37,7 +39,8 @@ export function runAnalysis(evidence: PageEvidence, opts: PipelineOptions): Anal
       scoreBreakdown: [],
       recommendedAction: `You marked "${domain}" as trusted, so analysis was skipped. Remove it from approved domains to re-enable checks.`,
       overridden: true,
-      analyzedAt: Date.now(),
+      threatIntel: { status: 'disabled', checkedAt: null, findings: [] },
+      analyzedAt,
     };
   }
 
@@ -49,14 +52,10 @@ export function runAnalysis(evidence: PageEvidence, opts: PipelineOptions): Anal
     ...detectLanguageSignals(evidence),
   ];
 
-  if (opts.threatIntelEnabled) {
-    const threat = lookupKnownThreat(evidence.url);
-    if (threat) signals.push(threat);
-  }
-
   const { score, classification, breakdown } = calculateRisk(signals);
 
   return {
+    analysisId,
     url: evidence.url,
     domain,
     score,
@@ -67,6 +66,11 @@ export function runAnalysis(evidence: PageEvidence, opts: PipelineOptions): Anal
     scoreBreakdown: breakdown,
     recommendedAction: RECOMMENDED_ACTIONS[classification],
     overridden: false,
-    analyzedAt: Date.now(),
+    threatIntel: {
+      status: opts.threatIntelEnabled ? 'pending' : 'disabled',
+      checkedAt: null,
+      findings: [],
+    },
+    analyzedAt,
   };
 }

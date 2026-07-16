@@ -1,5 +1,11 @@
 import { loadSettings, saveSettings } from '../shared/settings';
-import type { AnalysisResult, ExplainRequest, ExplainResponse, Settings } from '../shared/types';
+import type {
+  AnalysisResult,
+  ExplainRequest,
+  ExplainResponse,
+  ResultUpdatedMessage,
+  Settings,
+} from '../shared/types';
 
 const BACKEND_URL = 'http://127.0.0.1:8787/explain';
 
@@ -26,6 +32,72 @@ async function getActiveTabResult(): Promise<{ tabId: number | null; result: Ana
 function renderNoResult(): void {
   main.innerHTML = `<p class="muted">No analysis for this page. PhishLens runs on regular
     http(s) pages once they finish loading.</p>`;
+}
+
+function formatTime(value: string | null): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+}
+
+function renderThreatIntel(result: AnalysisResult): string {
+  const summary = result.threatIntel;
+  if (!summary) {
+    return `<h2>Threat intelligence</h2>
+      <div class="threat-intel muted">Reload this page to start a PhishTank lookup.</div>`;
+  }
+  if (summary.status === 'disabled') {
+    return `<h2>Threat intelligence</h2>
+      <div class="threat-intel muted">PhishTank lookup is disabled.</div>`;
+  }
+  if (summary.status === 'pending') {
+    return `<h2>Threat intelligence</h2>
+      <div class="threat-intel"><strong>Checking PhishTankâ€¦</strong></div>`;
+  }
+  if (summary.status === 'unavailable') {
+    return `<h2>Threat intelligence</h2>
+      <div class="threat-intel">
+        <strong>PhishTank lookup unavailable</strong>
+        <div class="muted">The local page analysis is still active.</div>
+      </div>`;
+  }
+
+  const finding = summary.findings.find((item) => item.provider === 'phishtank');
+  if (!finding?.available) {
+    return `<h2>Threat intelligence</h2>
+      <div class="threat-intel">
+        <strong>PhishTank lookup unavailable</strong>
+        <div class="muted">The local page analysis is still active.</div>
+      </div>`;
+  }
+
+  if (finding.matched && finding.matchType === 'exact-url') {
+    const verified = formatTime(finding.verificationTime);
+    return `<h2>Threat intelligence</h2>
+      <div class="threat-intel threat-match">
+        <strong>PhishTank</strong>
+        <div>Exact verified phishing URL match in the bundled snapshot</div>
+        <div>Confidence: High</div>
+        ${finding.targetBrand ? `<div>Target: ${escapeHtml(finding.targetBrand)}</div>` : ''}
+        ${verified ? `<div>Verified: ${escapeHtml(verified)}</div>` : ''}
+      </div>`;
+  }
+
+  if (finding.matched && finding.matchType === 'hostname') {
+    return `<h2>Threat intelligence</h2>
+      <div class="threat-intel">
+        <strong>PhishTank</strong>
+        <div>Other phishing URLs were reported on this hostname in the bundled snapshot.</div>
+        <div class="muted">This hostname-only finding did not independently increase the score.</div>
+      </div>`;
+  }
+
+  return `<h2>Threat intelligence</h2>
+    <div class="threat-intel">
+      <strong>PhishTank</strong>
+      <div>No match found in the bundled snapshot</div>
+      <div class="muted">Snapshot date: July 16, 2026. This is not a safety guarantee.</div>
+    </div>`;
 }
 
 function renderResult(result: AnalysisResult, settings: Settings): void {
@@ -73,6 +145,7 @@ function renderResult(result: AnalysisResult, settings: Settings): void {
       </div>
     </div>
     ${findings}
+    ${renderThreatIntel(result)}
     <h2>Recommended action</h2>
     <div class="action">${escapeHtml(result.recommendedAction)}</div>
     ${breakdown}
@@ -195,8 +268,14 @@ async function bindSettings(result: AnalysisResult | null): Promise<void> {
 (async () => {
   el('version').textContent = `v${chrome.runtime.getManifest().version}`;
   const settings = await loadSettings();
-  const { result } = await getActiveTabResult();
+  const { tabId, result } = await getActiveTabResult();
   if (result) renderResult(result, settings);
   else renderNoResult();
   await bindSettings(result);
+
+  chrome.runtime.onMessage.addListener((message: ResultUpdatedMessage) => {
+    if (message?.type === 'RESULT_UPDATED' && message.tabId === tabId) {
+      void loadSettings().then((current) => renderResult(message.result, current));
+    }
+  });
 })();

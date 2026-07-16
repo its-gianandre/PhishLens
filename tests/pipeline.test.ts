@@ -70,12 +70,14 @@ describe('pipeline on the documented test pages', () => {
     expect(result.signals).toEqual([]);
   });
 
-  it('known-threat lookup contributes a signal when enabled', () => {
+  it('marks threat intelligence pending without delaying or scoring the local result', () => {
     const evidence = makeEvidence({ url: 'https://phish.example.test/login' });
-    const flagged = runAnalysis(evidence, DEFAULTS);
-    expect(flagged.signals.map((s) => s.id)).toContain('known-malicious-url');
+    const pending = runAnalysis(evidence, DEFAULTS);
+    expect(pending.threatIntel.status).toBe('pending');
+    expect(pending.signals.map((s) => s.id)).not.toContain('known-malicious-url');
 
     const disabled = runAnalysis(evidence, { ...DEFAULTS, threatIntelEnabled: false });
+    expect(disabled.threatIntel.status).toBe('disabled');
     expect(disabled.signals.map((s) => s.id)).not.toContain('known-malicious-url');
   });
 });

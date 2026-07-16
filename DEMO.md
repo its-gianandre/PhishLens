@@ -4,6 +4,7 @@
 
 ```bash
 npm install
+npm run threat-intel:test-feed
 npm run build
 npm run test-pages   # terminal 1 — http://localhost:8000
 npm run backend      # terminal 2 — http://127.0.0.1:8787
@@ -11,8 +12,10 @@ npm run backend      # terminal 2 — http://127.0.0.1:8787
 
 Load `dist/` via `chrome://extensions` → Load unpacked. Pin the PhishLens icon.
 
-You can confirm that the local explanation backend is ready by opening
-`http://127.0.0.1:8787/health`; it should return `{"ok":true,"mode":"local"}`.
+You can confirm that the local backend is ready by opening
+`http://127.0.0.1:8787/health`. The response includes a `threatIntel` object
+with `available`, `records`, and `hostnames`. If the feed is missing, the
+backend still starts and reports threat intelligence as unavailable.
 
 ## Sequence (~4 minutes)
 
@@ -33,6 +36,12 @@ You can confirm that the local explanation backend is ready by opening
    field, suspicious URL keyword. Emphasize that the verdict comes from the
    deterministic detection engine and each finding is independently
    inspectable.
+
+   Point out the **Threat intelligence** section. It briefly shows
+   *Checking PhishTank...* while the immediate local score is already visible,
+   then changes to an exact snapshot match, hostname-only snapshot match, no
+   snapshot match, or unavailable state. Exact URL matches are the only
+   PhishTank findings that affect the score in this version.
 
 4. **The local explanation.** Click *Explain this result*. The button disables
    while the popup shows *Generating explanation...*, then changes to
@@ -69,6 +78,11 @@ You can confirm that the local explanation backend is ready by opening
 - Privacy: PhishLens never collects entered values, cookies, tokens, or full
   page HTML. Only sanitized structured findings are sent from the extension to
   the backend running locally on the same computer.
+- The backend checks URLs against an in-memory local PhishTank index and never
+  visits the suspicious page or sends the browsing URL to a third party.
+- "No match found in the bundled snapshot" is not a safety guarantee. The
+  snapshot is dated July 16, 2026, does not update automatically, and becomes
+  less current over time.
 - Adversarially tested: split brand names, punycode look-alikes, hidden
   keywords, JS-intercepted forms, and prompt-injection attempts in page
   content (`npm test` — 64 tests).

@@ -70,14 +70,22 @@ function escapeHtml(text: string): string {
 /** In-page warning banner, shown only for High/Critical pages. */
 export function showWarningBanner(result: AnalysisResult): void {
   const shadow = ensureRoot();
-  if (shadow.querySelector('.banner')) return;
-
   const brandNote = result.suspectedBrand
     ? ` It presents itself as <strong>${escapeHtml(result.suspectedBrand)}</strong> but is hosted on <strong>${escapeHtml(result.domain)}</strong>.`
     : '';
 
-  const banner = document.createElement('div');
-  banner.className = 'banner';
+  let banner = shadow.querySelector<HTMLElement>('.banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.className = 'banner';
+    banner.addEventListener('click', (event) => {
+      const act = (event.target as HTMLElement).getAttribute?.('data-act');
+      if (act === 'dismiss') banner?.remove();
+      if (act === 'details') banner?.querySelector('.evidence')?.classList.toggle('open');
+    });
+    shadow.appendChild(banner);
+  }
+
   banner.innerHTML = `
     <div class="icon">⚠️</div>
     <div class="body">
@@ -88,13 +96,6 @@ export function showWarningBanner(result: AnalysisResult): void {
       <ul class="evidence">${evidenceListHtml(result)}</ul>
     </div>`;
 
-  banner.addEventListener('click', (event) => {
-    const act = (event.target as HTMLElement).getAttribute?.('data-act');
-    if (act === 'dismiss') banner.remove();
-    if (act === 'details') banner.querySelector('.evidence')?.classList.toggle('open');
-  });
-
-  shadow.appendChild(banner);
 }
 
 interface SubmitWarningActions {
@@ -163,11 +164,15 @@ function formIsSensitive(form: HTMLFormElement): boolean {
  * listener so it runs before the page's own handlers.
  */
 export function installSubmitGuard(result: AnalysisResult): void {
-  const approvedForms = new WeakSet<HTMLFormElement>();
+  activeGuardResult = result;
+  if (submitGuardInstalled) return;
+  submitGuardInstalled = true;
 
   window.addEventListener(
     'submit',
     (event) => {
+      const currentResult = activeGuardResult;
+      if (!currentResult) return;
       const form = event.target;
       if (!(form instanceof HTMLFormElement)) return;
       if (approvedForms.has(form)) return;
@@ -176,7 +181,7 @@ export function installSubmitGuard(result: AnalysisResult): void {
       event.preventDefault();
       event.stopImmediatePropagation();
 
-      showSubmitWarning(result, {
+      showSubmitWarning(currentResult, {
         onProceed: () => {
           approvedForms.add(form);
           if (typeof form.requestSubmit === 'function') form.requestSubmit();
@@ -191,3 +196,7 @@ export function installSubmitGuard(result: AnalysisResult): void {
     true,
   );
 }
+
+const approvedForms = new WeakSet<HTMLFormElement>();
+let activeGuardResult: AnalysisResult | null = null;
+let submitGuardInstalled = false;
