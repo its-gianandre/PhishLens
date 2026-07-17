@@ -1,0 +1,5 @@
+# Safe synthetic URLhaus fixture. These URLs are reserved for tests.
+id,dateadded,url,url_status,last_online,threat,tags,urlhaus_link,reporter
+2001,2026-07-17 10:00:00,https://download.example/payload.exe,online,2026-07-17 10:05:00,malware_download,"exe, trojan",https://urlhaus.example/url/2001/,Example
+2002,2026-07-17 11:00:00,https://download.example/another-path,offline,2026-07-17 11:05:00,malware_download,script,https://urlhaus.example/url/2002/,Example
+2003,2026-07-17 12:00:00,not-a-url,online,2026-07-17 12:05:00,malware_download,invalid,https://urlhaus.example/url/2003/,Example

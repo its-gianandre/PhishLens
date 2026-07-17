@@ -67,14 +67,30 @@ function cleanNullableString(value: unknown): string | null {
   return cleaned || null;
 }
 
+function cleanStringArray(value: unknown): string[] {
+  if (value == null) return [];
+  if (!Array.isArray(value) || value.length > 20) throw new Error('invalid threat-intel tags');
+  return value.map((item) => {
+    const cleaned = cleanNullableString(item);
+    if (!cleaned) throw new Error('invalid threat-intel tag');
+    return cleaned;
+  });
+}
+
 function parseFinding(value: unknown): ThreatIntelFinding {
   if (typeof value !== 'object' || value === null) throw new Error('invalid finding');
   const finding = value as Record<string, unknown>;
-  if (finding.provider !== 'phishtank') throw new Error('invalid provider');
+  if (finding.provider !== 'phishtank' && finding.provider !== 'urlhaus') {
+    throw new Error('invalid provider');
+  }
   if (typeof finding.available !== 'boolean' || typeof finding.matched !== 'boolean') {
     throw new Error('invalid finding flags');
   }
-  if (finding.category !== null && finding.category !== 'phishing') {
+  if (
+    finding.category !== null &&
+    finding.category !== 'phishing' &&
+    finding.category !== 'malware'
+  ) {
     throw new Error('invalid threat category');
   }
   if (
@@ -95,7 +111,7 @@ function parseFinding(value: unknown): ThreatIntelFinding {
   }
 
   return {
-    provider: 'phishtank',
+    provider: finding.provider,
     available: finding.available,
     matched: finding.matched,
     category: finding.category,
@@ -105,6 +121,9 @@ function parseFinding(value: unknown): ThreatIntelFinding {
     referenceUrl: cleanNullableString(finding.referenceUrl),
     verificationTime: cleanNullableString(finding.verificationTime),
     submissionTime: cleanNullableString(finding.submissionTime),
+    status: cleanNullableString(finding.status),
+    threat: cleanNullableString(finding.threat),
+    tags: cleanStringArray(finding.tags),
   };
 }
 

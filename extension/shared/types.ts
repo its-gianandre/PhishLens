@@ -33,7 +33,8 @@ export type SignalId =
   | 'authority-language'
   | 'reward-language'
   // Threat intel
-  | 'known-malicious-url';
+  | 'known-malicious-url'
+  | 'known-malware-url';
 
 export type Severity = 'low' | 'medium' | 'high';
 
@@ -94,20 +95,23 @@ export interface ScoreLine {
   points: number;
 }
 
-export type ThreatIntelProvider = 'phishtank';
+export type ThreatIntelProvider = 'phishtank' | 'urlhaus';
 export type ThreatMatchType = 'exact-url' | 'hostname' | 'registrable-domain';
 
 export interface ThreatIntelFinding {
   provider: ThreatIntelProvider;
   available: boolean;
   matched: boolean;
-  category: 'phishing' | null;
+  category: 'phishing' | 'malware' | null;
   matchType: ThreatMatchType | null;
   confidence: 'high' | 'medium' | 'low' | null;
   targetBrand: string | null;
   referenceUrl: string | null;
   verificationTime: string | null;
   submissionTime: string | null;
+  status: string | null;
+  threat: string | null;
+  tags: string[];
 }
 
 export interface ThreatIntelSummary {

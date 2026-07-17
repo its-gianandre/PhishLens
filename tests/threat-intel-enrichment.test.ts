@@ -21,6 +21,9 @@ function finding(overrides: Partial<ThreatIntelFinding> = {}): ThreatIntelFindin
     referenceUrl: null,
     verificationTime: '2026-07-15T10:05:00Z',
     submissionTime: null,
+    status: 'online',
+    threat: 'phishing',
+    tags: [],
     ...overrides,
   };
 }
@@ -40,6 +43,20 @@ describe('threat-intel signal conversion', () => {
     expect(threatIntelToSignals(summary([
       finding({ matchType: 'hostname', confidence: 'medium' }),
     ]))).toEqual([]);
+  });
+
+  it('scores only exact URLhaus matches that are currently online', () => {
+    const urlhaus = finding({
+      provider: 'urlhaus',
+      category: 'malware',
+      targetBrand: null,
+      threat: 'malware_download',
+      tags: ['exe'],
+    });
+    expect(threatIntelToSignals(summary([urlhaus])).map((signal) => signal.id))
+      .toEqual(['known-malware-url']);
+    expect(threatIntelToSignals(summary([{ ...urlhaus, status: 'offline' }]))).toEqual([]);
+    expect(threatIntelToSignals(summary([{ ...urlhaus, matchType: 'hostname' }]))).toEqual([]);
   });
 });
 

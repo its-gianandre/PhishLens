@@ -2,7 +2,7 @@ import { normalizeUrl } from '../normalize-url.mjs';
 
 function emptyFinding(available) {
   return {
-    provider: 'phishtank',
+    provider: 'urlhaus',
     available,
     matched: false,
     category: null,
@@ -20,40 +20,37 @@ function emptyFinding(available) {
 
 function matchedFinding(metadata, matchType) {
   return {
-    provider: 'phishtank',
+    provider: 'urlhaus',
     available: true,
     matched: true,
-    category: 'phishing',
+    category: 'malware',
     matchType,
     confidence: matchType === 'exact-url' ? 'high' : 'medium',
-    targetBrand: metadata.targetBrand,
+    targetBrand: null,
     referenceUrl: metadata.referenceUrl,
-    verificationTime: metadata.verificationTime,
-    submissionTime: metadata.submissionTime,
-    status: 'online',
-    threat: 'phishing',
-    tags: [],
+    verificationTime: metadata.lastOnline,
+    submissionTime: metadata.dateAdded,
+    status: metadata.status,
+    threat: metadata.threat,
+    tags: metadata.tags,
   };
 }
 
-export function createPhishTankProvider(index) {
+export function createUrlhausProvider(index) {
   return {
     lookup(rawUrl) {
       if (!index) return emptyFinding(false);
-
       const normalizedUrl = normalizeUrl(rawUrl);
       const exact = index.exactUrls.get(normalizedUrl);
       if (exact) return matchedFinding(exact, 'exact-url');
 
-      const hostname = new URL(normalizedUrl).hostname;
-      const hostnameMatch = index.hostnames.get(hostname);
+      const hostnameMatch = index.hostnames.get(new URL(normalizedUrl).hostname);
       if (hostnameMatch) return matchedFinding(hostnameMatch, 'hostname');
-
       return emptyFinding(true);
     },
   };
 }
 
-export function unavailablePhishTankFinding() {
+export function unavailableUrlhausFinding() {
   return emptyFinding(false);
 }

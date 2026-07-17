@@ -86,6 +86,7 @@ const REASON_TEMPLATES = {
   'authority-language': () => 'The page borrows the voice of an authority (security team, government, legal) to appear trustworthy.',
   'reward-language': () => 'The page promises a prize or reward, a common lure.',
   'known-malicious-url': () => 'This site appears on a list of known phishing sites.',
+  'known-malware-url': () => 'This exact address appears in URLhaus as an active malware-distribution URL.',
 };
 
 const SUMMARY_BY_CLASS = {
