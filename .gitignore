@@ -15,3 +15,7 @@ backend/threat-intel/data/*.tmp
 
 # Deliberately committed, immutable PhishTank snapshot.
 !backend/threat-intel/data/phishtank-snapshot-2026-07-16.json.gz
+
+# Deliberately committed, safe synthetic presentation feeds.
+!backend/threat-intel/data/demo-phishtank.json
+!backend/threat-intel/data/demo-urlhaus.csv

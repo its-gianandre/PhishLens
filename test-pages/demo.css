@@ -1,0 +1,65 @@
+:root {
+  color-scheme: light;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --ink: #172033;
+  --muted: #637083;
+  --line: #dfe5ec;
+  --surface: #ffffff;
+  --canvas: #f4f7fb;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--ink);
+  background: var(--canvas);
+}
+
+button, input { font: inherit; }
+
+.demo-ribbon {
+  position: fixed;
+  z-index: 20;
+  top: 18px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 13px;
+  border: 1px solid rgba(21, 34, 56, .12);
+  border-radius: 999px;
+  color: #26364e;
+  background: rgba(255, 255, 255, .94);
+  box-shadow: 0 8px 24px rgba(29, 45, 71, .12);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  transform: translateX(-50%);
+  backdrop-filter: blur(12px);
+}
+
+.demo-ribbon::before {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #21a366;
+  content: "";
+}
+
+.page-shell {
+  width: min(1120px, calc(100% - 40px));
+  margin: 0 auto;
+}
+
+.sr-note {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+@media (max-width: 640px) {
+  .demo-ribbon { position: static; width: max-content; margin: 16px auto 0; transform: none; }
+  .page-shell { width: min(100% - 28px, 1120px); }
+}

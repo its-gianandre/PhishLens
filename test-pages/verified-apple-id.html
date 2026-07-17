@@ -1,0 +1,64 @@
+<!doctype html>
+<!-- Harmless local simulation. The form never sends credentials; use fake values only. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Sign in to continue to your Apple account.">
+  <title>Apple Account | Sign in</title>
+  <link rel="stylesheet" href="demo.css">
+  <style>
+    body { background: #f5f5f7; color: #1d1d1f; }
+    .apple-nav {
+      height: 46px; border-bottom: 1px solid #d2d2d7; background: rgba(255,255,255,.82);
+      backdrop-filter: saturate(180%) blur(20px);
+    }
+    .apple-nav .page-shell { display: flex; align-items: center; justify-content: space-between; height: 100%; }
+    .apple-mark { font-size: 23px; line-height: 1; }
+    .apple-nav span:last-child { font-size: 13px; color: #424245; }
+    main { display: grid; place-items: center; min-height: calc(100vh - 46px); padding: 64px 20px; }
+    .signin { width: min(100%, 430px); text-align: center; }
+    .account-icon {
+      display: grid; place-items: center; width: 74px; height: 74px; margin: 0 auto 22px;
+      border-radius: 18px; color: white; background: linear-gradient(145deg, #727276, #202024);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.25), 0 16px 30px rgba(0,0,0,.12);
+      font-size: 32px;
+    }
+    h1 { margin: 0 0 10px; font-size: clamp(30px, 5vw, 42px); letter-spacing: -.035em; }
+    .lead { margin: 0 0 32px; color: #6e6e73; font-size: 17px; }
+    .field {
+      width: 100%; height: 54px; padding: 0 16px; border: 1px solid #86868b;
+      border-radius: 12px; color: #1d1d1f; background: #fff; outline: none;
+    }
+    .field + .field { margin-top: 12px; }
+    .field:focus { border-color: #0071e3; box-shadow: 0 0 0 4px rgba(0,125,250,.16); }
+    .submit {
+      width: 100%; height: 50px; margin-top: 18px; border: 0; border-radius: 980px;
+      color: #fff; background: #0071e3; cursor: pointer; font-weight: 650;
+    }
+    .submit:hover { background: #0077ed; }
+    .help { margin-top: 25px; color: #0066cc; font-size: 14px; }
+    .sr-note { margin: 28px auto 0; max-width: 360px; }
+  </style>
+</head>
+<body>
+  <div class="demo-ribbon">Safe local simulation</div>
+  <header class="apple-nav">
+    <div class="page-shell"><span class="apple-mark">●</span><span>Apple Account</span></div>
+  </header>
+  <main>
+    <section class="signin" aria-labelledby="signin-title">
+      <div class="account-icon" aria-hidden="true">●</div>
+      <h1 id="signin-title">Sign in to Apple Account</h1>
+      <p class="lead">Use your Apple ID to continue.</p>
+      <form action="/demo-only" method="post">
+        <input class="field" type="email" name="email" autocomplete="username" placeholder="Email or phone number">
+        <input class="field" type="password" name="password" autocomplete="current-password" placeholder="Password">
+        <button class="submit" type="submit">Continue</button>
+      </form>
+      <p class="help">Forgot password? &nbsp;·&nbsp; Create Apple Account</p>
+      <p class="sr-note">Presentation fixture only. The destination is a dummy local route and no credentials are stored.</p>
+    </section>
+  </main>
+</body>
+</html>

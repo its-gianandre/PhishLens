@@ -4,11 +4,13 @@
 
 ```bash
 npm install
-npm run threat-intel:test-feed
 npm run build
 npm run test-pages   # terminal 1 — http://localhost:8000
 npm run backend      # terminal 2 — http://127.0.0.1:8787
 ```
+
+Restart the backend after pulling or changing demo feed data. The normal
+backend overlays the safe local presentation records on its real feed indexes.
 
 Load `dist/` via `chrome://extensions` → Load unpacked. Pin the PhishLens icon.
 
@@ -17,7 +19,29 @@ You can confirm that the local backend is ready by opening
 with `available`, `records`, and `hostnames`. If the feed is missing, the
 backend still starts and reports threat intelligence as unavailable.
 
-## Sequence (~4 minutes)
+## Threat-intelligence showcase (~3 minutes)
+
+1. **Verified phishing intelligence.** From the gallery, open the PhishTank
+   exact-match scenario. Local rules already recognize Apple impersonation and
+   a password request as High risk. The exact verified PhishTank hit then
+   identifies Apple as the target, adds auditable evidence, and moves the
+   result to Critical.
+
+2. **Malware beyond credential phishing.** Open the URLhaus browser-update
+   scenario. With no login form and few local indicators, the immediate result
+   is Low. URLhaus identifies the exact URL as an active malware-distribution
+   location, shows its status, threat type, and `exe` / `FakeUpdate` tags, and
+   moves the result to High. This is the clearest before/after video moment.
+
+3. **Evidence without overclaiming.** Open the shared-host reputation
+   scenario. Both providers report other known URLs on the hostname, but the
+   clean status page stays Low. Point out that hostname-only context does not
+   independently increase the score.
+
+All three records are safe, synthetic, and local. No malicious site or payload
+is contacted.
+
+## Original detector sequence (~4 minutes)
 
 1. **Low-risk baseline.** Open
    `http://localhost:8000/normal-login.html`. The badge is green and the popup
@@ -78,7 +102,7 @@ backend still starts and reports threat intelligence as unavailable.
 - Privacy: PhishLens never collects entered values, cookies, tokens, or full
   page HTML. Only sanitized structured findings are sent from the extension to
   the backend running locally on the same computer.
-- The backend checks URLs against an in-memory local PhishTank index and never
+- The backend checks URLs against in-memory local PhishTank and URLhaus indexes and never
   visits the suspicious page or sends the browsing URL to a third party.
 - "No match found in the bundled snapshot" is not a safety guarantee. The
   snapshot is dated July 16, 2026, does not update automatically, and becomes

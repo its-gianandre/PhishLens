@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
-import { rename, unlink, writeFile } from 'node:fs/promises';
-import { loadPhishTankFeed } from './parser.mjs';
+import { readFile, rename, unlink, writeFile } from 'node:fs/promises';
+import { buildPhishTankIndex, loadPhishTankFeed } from './parser.mjs';
 import {
   createPhishTankProvider,
   unavailablePhishTankFinding,
@@ -18,7 +18,36 @@ export const DEFAULT_FEED_PATH = fileURLToPath(
 export const DEFAULT_URLHAUS_CACHE_PATH = fileURLToPath(
   new URL('./data/urlhaus-recent.csv', import.meta.url),
 );
+const DEMO_PHISHTANK_PATH = new URL('./data/demo-phishtank.json', import.meta.url);
+const DEMO_URLHAUS_PATH = fileURLToPath(
+  new URL('./data/demo-urlhaus.csv', import.meta.url),
+);
 export const SNAPSHOT_DATE = '2026-07-16';
+
+function mergeIndexes(base, overlay) {
+  if (!base) return overlay;
+  if (!overlay) return base;
+
+  return {
+    exactUrls: new Map([...base.exactUrls, ...overlay.exactUrls]),
+    hostnames: new Map([...base.hostnames, ...overlay.hostnames]),
+    rawRecordCount: base.rawRecordCount + overlay.rawRecordCount,
+    acceptedRecordCount: base.acceptedRecordCount + overlay.acceptedRecordCount,
+    exactUrlCount: new Set([...base.exactUrls.keys(), ...overlay.exactUrls.keys()]).size,
+    hostnameCount: new Set([...base.hostnames.keys(), ...overlay.hostnames.keys()]).size,
+  };
+}
+
+async function loadDemoIndexes() {
+  const [phishtankJson, urlhausCsv] = await Promise.all([
+    readFile(DEMO_PHISHTANK_PATH, 'utf8'),
+    readFile(DEMO_URLHAUS_PATH, 'utf8'),
+  ]);
+  return {
+    phishtank: buildPhishTankIndex(JSON.parse(phishtankJson)),
+    urlhaus: buildUrlhausIndex(urlhausCsv),
+  };
+}
 
 function emptyProviderState(provider) {
   return {
@@ -38,19 +67,35 @@ let state = {
   urlhaus: emptyProviderState(createUrlhausProvider(null)),
 };
 
-async function initializePhishTank(feedPath, initializedAt) {
+async function initializePhishTank(feedPath, initializedAt, records, demoIndex) {
   try {
-    const index = await loadPhishTankFeed(feedPath);
+    const baseIndex = records === undefined
+      ? await loadPhishTankFeed(feedPath)
+      : buildPhishTankIndex(records);
+    const index = mergeIndexes(baseIndex, demoIndex);
+    const baseSource = records === undefined ? 'bundled-snapshot' : 'configured-records';
     state.phishtank = {
       available: true,
       index,
       provider: createPhishTankProvider(index),
       initializedAt,
       updatedAt: initializedAt,
-      source: 'bundled-snapshot',
+      source: demoIndex ? `${baseSource}+demo-fixtures` : baseSource,
       error: null,
     };
   } catch (error) {
+    if (demoIndex) {
+      state.phishtank = {
+        available: true,
+        index: demoIndex,
+        provider: createPhishTankProvider(demoIndex),
+        initializedAt,
+        updatedAt: initializedAt,
+        source: 'demo-fixtures-fallback',
+        error: String(error?.message ?? error),
+      };
+      return;
+    }
     if (!state.phishtank.available) {
       state.phishtank = {
         ...emptyProviderState(createPhishTankProvider(null)),
@@ -84,7 +129,7 @@ async function loadUrlhausCache(cachePath) {
   return validateUrlhausIndex(await loadUrlhausFeed(cachePath));
 }
 
-async function initializeUrlhaus(options, initializedAt) {
+async function initializeUrlhaus(options, initializedAt, demoIndex) {
   const cachePath = options.urlhausFeedPath ?? DEFAULT_URLHAUS_CACHE_PATH;
   const authKey = options.urlhausAuthKey ?? process.env.URLHAUS_AUTH_KEY;
 
@@ -118,16 +163,29 @@ async function initializeUrlhaus(options, initializedAt) {
       source = options.urlhausFeedPath ? 'configured-file' : 'local-cache';
     }
 
+    index = mergeIndexes(index, demoIndex);
     state.urlhaus = {
       available: true,
       index,
       provider: createUrlhausProvider(index),
       initializedAt,
       updatedAt: initializedAt,
-      source,
+      source: demoIndex ? `${source}+demo-fixtures` : source,
       error: warning,
     };
   } catch (error) {
+    if (demoIndex) {
+      state.urlhaus = {
+        available: true,
+        index: demoIndex,
+        provider: createUrlhausProvider(demoIndex),
+        initializedAt,
+        updatedAt: initializedAt,
+        source: 'demo-fixtures-fallback',
+        error: String(error?.message ?? error),
+      };
+      return;
+    }
     if (!state.urlhaus.available) {
       state.urlhaus = {
         ...emptyProviderState(createUrlhausProvider(null)),
@@ -144,10 +202,16 @@ async function initializeUrlhaus(options, initializedAt) {
 
 export async function initializeThreatIntel(options = {}) {
   const initializedAt = Date.now();
+  const demoIndexes = options.includeDemoFixtures ? await loadDemoIndexes() : null;
   state.initializedAt = initializedAt;
   await Promise.all([
-    initializePhishTank(options.feedPath ?? DEFAULT_FEED_PATH, initializedAt),
-    initializeUrlhaus(options, initializedAt),
+    initializePhishTank(
+      options.feedPath ?? DEFAULT_FEED_PATH,
+      initializedAt,
+      options.phishtankRecords,
+      demoIndexes?.phishtank,
+    ),
+    initializeUrlhaus(options, initializedAt, demoIndexes?.urlhaus),
   ]);
   return getThreatIntelService().health();
 }

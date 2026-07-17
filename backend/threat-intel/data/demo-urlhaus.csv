@@ -1,0 +1,4 @@
+# Safe synthetic URLhaus records for the local presentation pages. No malware is served.
+id,dateadded,url,url_status,last_online,threat,tags,urlhaus_link,reporter
+demo-uh-001,2026-07-17 14:20:00,http://software-update.localhost:8000/critical-browser-update.html,online,2026-07-17 14:25:00,malware_download,"exe,FakeUpdate",https://urlhaus.abuse.ch/,PhishLens-Demo
+demo-uh-002,2026-07-17 14:30:00,http://reputation-lab.localhost:8000/reported-payload.exe,online,2026-07-17 14:35:00,malware_download,"exe,loader",https://urlhaus.abuse.ch/,PhishLens-Demo
