@@ -17,6 +17,10 @@ import { createBackendServer } from '../backend/server.mjs';
 const gzipAsync = promisify(gzip);
 const fixtureUrl = new URL('./fixtures/phishtank-small.json', import.meta.url);
 const temporaryFiles: string[] = [];
+const phishtankOnly = {
+  urlhausAuthKey: '',
+  urlhausFeedPath: 'missing-urlhaus-test-cache.csv',
+};
 
 afterEach(async () => {
   const { unlink } = await import('node:fs/promises');
@@ -68,7 +72,7 @@ describe('PhishTank parser and indexes', () => {
 
 describe('threat-intel service and backend routes', () => {
   it('reports unavailable for a missing feed', async () => {
-    await initializeThreatIntel({ feedPath: 'missing-phishtank-feed.json.gz' });
+    await initializeThreatIntel({ ...phishtankOnly, feedPath: 'missing-phishtank-feed.json.gz' });
     expect(getThreatIntelService().health()).toMatchObject({
       available: false,
       records: 0,
@@ -79,13 +83,13 @@ describe('threat-intel service and backend routes', () => {
 
   it('retains a previous valid index when a reload is corrupted', async () => {
     const validPath = await writeGzipFixture('valid');
-    await initializeThreatIntel({ feedPath: validPath });
+    await initializeThreatIntel({ ...phishtankOnly, feedPath: validPath });
     expect(getThreatIntelService().health().available).toBe(true);
 
     const corruptPath = `${fileURLToPath(fixtureUrl)}.${process.pid}.corrupt.json.gz`;
     temporaryFiles.push(corruptPath);
     await writeFile(corruptPath, 'not gzip data');
-    await initializeThreatIntel({ feedPath: corruptPath });
+    await initializeThreatIntel({ ...phishtankOnly, feedPath: corruptPath });
 
     expect(getThreatIntelService().health()).toMatchObject({
       available: true,
@@ -98,7 +102,7 @@ describe('threat-intel service and backend routes', () => {
 
   it('serves health and URL lookup without fetching the supplied page', async () => {
     const validPath = await writeGzipFixture('server');
-    await initializeThreatIntel({ feedPath: validPath });
+    await initializeThreatIntel({ ...phishtankOnly, feedPath: validPath });
     const server = createBackendServer();
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
 
@@ -107,11 +111,16 @@ describe('threat-intel service and backend routes', () => {
       if (!address || typeof address === 'string') throw new Error('missing server address');
       const base = `http://127.0.0.1:${address.port}`;
 
-      const health = await fetch(`${base}/health`).then((response) => response.json());
+      const healthResponse = await fetch(`${base}/health`);
+      expect(healthResponse.headers.get('cache-control')).toBe('no-store');
+      const health = await healthResponse.json();
       expect(health.threatIntel).toMatchObject({
         available: true,
-        provider: 'phishtank',
         records: 2,
+        providers: {
+          phishtank: { available: true, records: 2 },
+          urlhaus: { available: false, records: 0 },
+        },
       });
 
       const lookupResponse = await fetch(`${base}/threat-intel`, {
@@ -122,7 +131,10 @@ describe('threat-intel service and backend routes', () => {
       expect(lookupResponse.status).toBe(200);
       expect(await lookupResponse.json()).toMatchObject({
         status: 'complete',
-        findings: [{ matched: true, matchType: 'exact-url' }],
+        findings: [
+          { provider: 'phishtank', matched: true, matchType: 'exact-url' },
+          { provider: 'urlhaus', available: false, matched: false },
+        ],
       });
 
       const invalidResponse = await fetch(`${base}/threat-intel`, {
@@ -131,6 +143,25 @@ describe('threat-intel service and backend routes', () => {
         body: JSON.stringify({ url: 'ftp://example.com/file' }),
       });
       expect(invalidResponse.status).toBe(400);
+
+      const wrongContentType = await fetch(`${base}/threat-intel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ url: 'https://login.example/' }),
+      });
+      expect(wrongContentType.status).toBe(415);
+
+      const disallowedOrigin = await fetch(`${base}/health`, {
+        headers: { Origin: 'https://attacker.example' },
+      });
+      expect(disallowedOrigin.status).toBe(403);
+
+      const extensionOrigin = 'chrome-extension://abcdefghijklmnopabcdefghijklmnop';
+      const allowedExtension = await fetch(`${base}/health`, {
+        headers: { Origin: extensionOrigin },
+      });
+      expect(allowedExtension.status).toBe(200);
+      expect(allowedExtension.headers.get('access-control-allow-origin')).toBe(extensionOrigin);
     } finally {
       await new Promise<void>((resolve, reject) => {
         server.close((error: Error | undefined) => error ? reject(error) : resolve());

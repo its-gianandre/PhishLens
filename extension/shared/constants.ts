@@ -14,6 +14,7 @@ export const LIMITS = {
  * Tuned against test-pages/EXPECTED.md — see tests/pipeline.test.ts.
  */
 export const SIGNAL_WEIGHTS: Record<SignalId, number> = {
+  'known-malware-url': 60,
   'known-malicious-url': 30,
   'external-form-action': 25,
   'brand-domain-mismatch': 20,
@@ -332,4 +333,5 @@ export const SIGNAL_LABELS: Record<SignalId, string> = {
   'authority-language': 'Authority-impersonation language',
   'reward-language': 'Reward/prize language',
   'known-malicious-url': 'Known malicious URL',
+  'known-malware-url': 'Known active malware URL',
 };

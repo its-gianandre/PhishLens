@@ -8,8 +8,8 @@ import type {
 } from '../shared/types';
 
 export function unavailableThreatIntel(checkedAt = Date.now()): ThreatIntelSummary {
-  const finding: ThreatIntelFinding = {
-    provider: 'phishtank',
+  const finding = (provider: ThreatIntelFinding['provider']): ThreatIntelFinding => ({
+    provider,
     available: false,
     matched: false,
     category: null,
@@ -19,15 +19,20 @@ export function unavailableThreatIntel(checkedAt = Date.now()): ThreatIntelSumma
     referenceUrl: null,
     verificationTime: null,
     submissionTime: null,
-  };
-  return { status: 'unavailable', checkedAt, findings: [finding] };
+    status: null,
+    threat: null,
+    tags: [],
+  });
+  return { status: 'unavailable', checkedAt, findings: [finding('phishtank'), finding('urlhaus')] };
 }
 
 export function applyThreatIntel(
   initial: AnalysisResult,
   threatIntel: ThreatIntelSummary,
 ): AnalysisResult {
-  const localSignals = initial.signals.filter((signal) => signal.id !== 'known-malicious-url');
+  const localSignals = initial.signals.filter((signal) => (
+    signal.id !== 'known-malicious-url' && signal.id !== 'known-malware-url'
+  ));
   const signals = [...localSignals, ...threatIntelToSignals(threatIntel)];
   const { score, classification, breakdown } = calculateRisk(signals);
 

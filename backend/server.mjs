@@ -10,12 +10,19 @@ const MAX_URL_LENGTH = 4096;
 
 function allowedOrigin(origin) {
   if (!origin) return null;
-  if (origin.startsWith('chrome-extension://')) return origin;
   try {
     const url = new URL(origin);
     if (
+      url.protocol === 'chrome-extension:' &&
+      /^[a-p]{32}$/.test(url.hostname) &&
+      (!url.pathname || url.pathname === '/')
+    ) {
+      return origin;
+    }
+    if (
       (url.protocol === 'http:' || url.protocol === 'https:') &&
-      (url.hostname === '127.0.0.1' || url.hostname === 'localhost')
+      (url.hostname === '127.0.0.1' || url.hostname === 'localhost') &&
+      url.pathname === '/'
     ) {
       return origin;
     }
@@ -30,12 +37,19 @@ function sendJson(req, res, status, payload) {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+    'Cache-Control': 'no-store',
     Vary: 'Origin',
   };
   const origin = allowedOrigin(req.headers.origin);
   if (origin) headers['Access-Control-Allow-Origin'] = origin;
   res.writeHead(status, headers);
   res.end(JSON.stringify(payload));
+}
+
+function hasJsonContentType(req) {
+  const contentType = req.headers['content-type'];
+  return typeof contentType === 'string' &&
+    contentType.split(';', 1)[0].trim().toLowerCase() === 'application/json';
 }
 
 function readJsonBody(req, res) {
@@ -84,6 +98,10 @@ export function createBackendServer() {
     }
 
     if (req.method === 'POST' && req.url === '/explain') {
+      if (!hasJsonContentType(req)) {
+        sendJson(req, res, 415, { error: 'content type must be application/json' });
+        return;
+      }
       try {
         const body = await readJsonBody(req, res);
         const explanation = await explain(body);
@@ -97,6 +115,10 @@ export function createBackendServer() {
     }
 
     if (req.method === 'POST' && req.url === '/threat-intel') {
+      if (!hasJsonContentType(req)) {
+        sendJson(req, res, 415, { error: 'content type must be application/json' });
+        return;
+      }
       try {
         const body = await readJsonBody(req, res);
         if (typeof body?.url !== 'string') throw new Error('url must be a string');
@@ -120,11 +142,17 @@ export async function startBackend(port = PORT) {
   const server = createBackendServer();
   await new Promise((resolve) => server.listen(port, '127.0.0.1', resolve));
   console.log(`PhishLens local backend on http://127.0.0.1:${port}`);
-  console.log(
-    threatIntel.available
-      ? `PhishTank ready: ${threatIntel.records} URLs across ${threatIntel.hostnames} hostnames.`
-      : 'PhishTank unavailable; local analysis and explanations remain active.',
-  );
+  const readyProviders = Object.entries(threatIntel.providers)
+    .filter(([, provider]) => provider.available)
+    .map(([name, provider]) => `${name}: ${provider.records} URLs`);
+  console.log(readyProviders.length
+    ? `Threat intelligence ready (${readyProviders.join(', ')}).`
+    : 'Threat intelligence unavailable; local analysis and explanations remain active.');
+  for (const [name, provider] of Object.entries(threatIntel.providers)) {
+    if (!provider.available && provider.error) {
+      console.log(`${name} unavailable: ${provider.error}`);
+    }
+  }
   return server;
 }
 

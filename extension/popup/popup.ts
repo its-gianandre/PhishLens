@@ -40,7 +40,7 @@ function formatTime(value: string | null): string | null {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
-function renderThreatIntel(result: AnalysisResult): string {
+function renderPhishTankLegacy(result: AnalysisResult): string {
   const summary = result.threatIntel;
   if (!summary) {
     return `<h2>Threat intelligence</h2>
@@ -98,6 +98,84 @@ function renderThreatIntel(result: AnalysisResult): string {
       <div>No match found in the bundled snapshot</div>
       <div class="muted">Snapshot date: July 16, 2026. This is not a safety guarantee.</div>
     </div>`;
+}
+
+function renderThreatIntel(result: AnalysisResult): string {
+  const summary = result.threatIntel;
+  if (!summary) {
+    return `<h2>Threat intelligence</h2>
+      <div class="threat-intel muted">Reload this page to start known-threat lookups.</div>`;
+  }
+  if (summary.status === 'disabled') {
+    return `<h2>Threat intelligence</h2>
+      <div class="threat-intel muted">Known-threat lookups are disabled.</div>`;
+  }
+  if (summary.status === 'pending') {
+    return `<h2>Threat intelligence</h2>
+      <div class="threat-intel"><strong>Checking PhishTank and URLhaus...</strong></div>`;
+  }
+
+  const phishtank = summary.findings.find((item) => item.provider === 'phishtank');
+  let phishtankCard: string;
+  if (!phishtank?.available) {
+    phishtankCard = `<div class="threat-intel"><strong>PhishTank unavailable</strong></div>`;
+  } else if (phishtank.matched && phishtank.matchType === 'exact-url') {
+    const verified = formatTime(phishtank.verificationTime);
+    phishtankCard = `<div class="threat-intel threat-match">
+      <strong>PhishTank</strong>
+      <div>Exact verified phishing URL match in the bundled snapshot</div>
+      <div>Confidence: High</div>
+      ${phishtank.targetBrand ? `<div>Target: ${escapeHtml(phishtank.targetBrand)}</div>` : ''}
+      ${verified ? `<div>Verified: ${escapeHtml(verified)}</div>` : ''}
+    </div>`;
+  } else if (phishtank.matched && phishtank.matchType === 'hostname') {
+    phishtankCard = `<div class="threat-intel">
+      <strong>PhishTank</strong>
+      <div>Other phishing URLs were reported on this hostname in the bundled snapshot.</div>
+      <div class="muted">This hostname-only finding did not independently increase the score.</div>
+    </div>`;
+  } else {
+    phishtankCard = `<div class="threat-intel">
+      <strong>PhishTank</strong>
+      <div>No match found in the bundled snapshot</div>
+      <div class="muted">Snapshot date: July 16, 2026. This is not a safety guarantee.</div>
+    </div>`;
+  }
+
+  const urlhaus = summary.findings.find((item) => item.provider === 'urlhaus');
+  let urlhausCard: string;
+  if (!urlhaus?.available) {
+    urlhausCard = `<div class="threat-intel">
+      <strong>URLhaus unavailable</strong>
+      <div class="muted">Configure the local backend with a URLhaus auth key or cached feed.</div>
+    </div>`;
+  } else if (urlhaus.matched && urlhaus.matchType === 'exact-url') {
+    const observed = formatTime(urlhaus.verificationTime);
+    const active = urlhaus.status?.toLowerCase() === 'online';
+    urlhausCard = `<div class="threat-intel ${active ? 'threat-match' : ''}">
+      <strong>URLhaus</strong>
+      <div>Exact malware-distribution URL match</div>
+      ${urlhaus.status ? `<div>Status: ${escapeHtml(urlhaus.status)}</div>` : ''}
+      ${urlhaus.threat ? `<div>Threat: ${escapeHtml(urlhaus.threat)}</div>` : ''}
+      ${urlhaus.tags.length ? `<div>Tags: ${escapeHtml(urlhaus.tags.join(', '))}</div>` : ''}
+      ${observed ? `<div>Last observed: ${escapeHtml(observed)}</div>` : ''}
+      ${active ? '' : '<div class="muted">Offline matches are displayed but do not increase the score.</div>'}
+    </div>`;
+  } else if (urlhaus.matched && urlhaus.matchType === 'hostname') {
+    urlhausCard = `<div class="threat-intel">
+      <strong>URLhaus</strong>
+      <div>Other malware URLs were reported on this hostname.</div>
+      <div class="muted">This hostname-only finding did not independently increase the score.</div>
+    </div>`;
+  } else {
+    urlhausCard = `<div class="threat-intel">
+      <strong>URLhaus</strong>
+      <div>No malware URL match found in the local feed</div>
+      <div class="muted">No match is not a safety guarantee.</div>
+    </div>`;
+  }
+
+  return `<h2>Threat intelligence</h2>${phishtankCard}${urlhausCard}`;
 }
 
 function renderResult(result: AnalysisResult, settings: Settings): void {

@@ -43,7 +43,41 @@ technical explanations using deterministic templates. Evidence citations are
 copied directly from the detected signals, and no paid external service or API
 key is required.
 
-## Local PhishTank threat intelligence
+## Local threat intelligence
+
+PhishLens combines two independent local indexes:
+
+- **PhishTank** identifies verified phishing URLs from the bundled immutable snapshot.
+- **URLhaus** identifies malware-distribution URLs from an authenticated recent CSV export.
+
+The browser extension never contains either provider credential and never visits a URL from a
+feed. It sends the current page URL only to the backend on `127.0.0.1`, which performs local
+index lookups.
+
+### URLhaus setup
+
+Obtain an Auth-Key from the abuse.ch Authentication Portal, then provide it only to the backend
+process. In PowerShell:
+
+```powershell
+$urlhausSecureKey = Read-Host "URLhaus Auth-Key" -AsSecureString
+$env:URLHAUS_AUTH_KEY = [System.Net.NetworkCredential]::new("", $urlhausSecureKey).Password
+npm run backend
+```
+
+Enter the key only after PowerShell displays the masked prompt. Do not replace the prompt label
+`"URLhaus Auth-Key"` with the key itself; doing that exposes the credential in terminal history.
+
+On startup, the backend downloads the official URLhaus `recent.csv` export, validates and indexes
+it, and writes an ignored local cache to `backend/threat-intel/data/urlhaus-recent.csv`. Later
+starts can use that cache when no key is configured. Never commit the key, put it in extension
+settings, or paste it into browser code. The key-bearing export URL is deliberately excluded from
+logs and error messages.
+
+Only exact URLhaus matches whose feed status is `online` affect scoring. Exact offline matches and
+hostname-only matches remain visible as supporting context but do not independently add points.
+
+### PhishTank snapshot
 
 PhishLens includes a dated, immutable PhishTank snapshot at:
 
@@ -69,10 +103,9 @@ hostnames without exposing the feed path.
 
 Page analysis remains local and appears immediately. When known-threat lookup
 is enabled, the service worker asynchronously asks the local backend to check
-the current URL. An exact verified URL match adds the existing
-`known-malicious-url` signal and the deterministic scoring engine recalculates
-the score. A hostname-only match is displayed as supporting information and
-does not independently add points.
+the current URL against both available indexes. Exact matches can add a
+provider-specific deterministic signal and recalculate the score. Hostname-only
+matches are displayed as supporting information and do not independently add points.
 
 If the snapshot or backend is unavailable, the original heuristic result
 remains active. If a URL is absent, the popup says "No match found in the
