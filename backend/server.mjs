@@ -137,8 +137,8 @@ export function createBackendServer() {
   });
 }
 
-export async function startBackend(port = PORT) {
-  const threatIntel = await initializeThreatIntel();
+export async function startBackend(port = PORT, threatIntelOptions = { includeDemoFixtures: true }) {
+  const threatIntel = await initializeThreatIntel(threatIntelOptions);
   const server = createBackendServer();
   await new Promise((resolve) => server.listen(port, '127.0.0.1', resolve));
   console.log(`PhishLens local backend on http://127.0.0.1:${port}`);
