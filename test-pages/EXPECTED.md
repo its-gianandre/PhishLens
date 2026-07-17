@@ -9,55 +9,6 @@ Scores assume default settings (threat intel on, no approved-domain overrides).
 Loopback hosts are exempt from HTTP/port signals, so scores come from content,
 not from the pages being served locally.
 
-## Threat-intelligence UI checks
-
-With `npm run backend` running and the local feed loaded, the popup should show
-`Checking PhishTank...` without delaying the initial score. It should then show
-`No match found in the bundled snapshot` for these harmless local fixtures. If
-the backend or snapshot is unavailable, it should show `PhishTank lookup unavailable` while
-preserving the local score and warnings.
-
-An exact verified URL match adds one `known-malicious-url` signal and triggers
-normal deterministic rescoring. A hostname-only match is informational and
-must state that it did not independently increase the score. No-match wording
-must not claim the page is safe.
-
-The normal `npm run backend` command overlays safe synthetic PhishTank and
-URLhaus records for the presentation scenarios below onto its real local feed
-indexes. The optional `npm run backend:demo` alias behaves the same way. The
-demo records point only at `.localhost` pages and never serve a payload.
-
-## Presentation threat-intelligence scenarios
-
-### 6. verified-apple-id.html — PhishTank exact URL
-
-Open `http://signin-portal.localhost:8000/verified-apple-id.html`.
-
-- Initial local result: **High** (approximately 68) from an Apple brand-domain
-  mismatch, password field, suspicious URL text, and the impersonation combo.
-- Enriched result: **Critical** (100) after an exact verified PhishTank match.
-- The popup shows `known-malicious-url`, High confidence, Apple as the target,
-  and a verification time. URLhaus shows no match.
-
-### 7. critical-browser-update.html — URLhaus exact active URL
-
-Open `http://software-update.localhost:8000/critical-browser-update.html`.
-
-- Initial local result: **Low** (approximately 8). There is no form or brand
-  impersonation recognized by local rules.
-- Enriched result: **High** (approximately 68) after URLhaus identifies the
-  exact URL as an online malware-distribution location.
-- The popup shows `known-malware-url`, status `online`, threat
-  `malware_download`, and the tags `exe` and `FakeUpdate`.
-
-### 8. vendor-status.html — both providers, hostname only
-
-Open `http://reputation-lab.localhost:8000/vendor-status.html`.
-
-- Initial and enriched result: **Low** (0), with no local indicators.
-- PhishTank and URLhaus each report other known URLs on the hostname.
-- Both cards explicitly say that hostname-only findings did not independently
-  increase the score. No scored threat-intelligence signal is added.
 
 ## Explanation UI checks
 
@@ -150,3 +101,54 @@ page and never enter credentials. Evidence citations and Technical mode must
 still show the individual signals and score components rather than treating
 the explanation as new detection evidence. Banner and submission guard are
 both expected.
+
+
+## Threat-intelligence UI checks
+
+With `npm run backend` running and the local feed loaded, the popup should show
+`Checking PhishTank...` without delaying the initial score. It should then show
+`No match found in the bundled snapshot` for these harmless local fixtures. If
+the backend or snapshot is unavailable, it should show `PhishTank lookup unavailable` while
+preserving the local score and warnings.
+
+An exact verified URL match adds one `known-malicious-url` signal and triggers
+normal deterministic rescoring. A hostname-only match is informational and
+must state that it did not independently increase the score. No-match wording
+must not claim the page is safe.
+
+The normal `npm run backend` command overlays safe synthetic PhishTank and
+URLhaus records for the presentation scenarios below onto its real local feed
+indexes. The optional `npm run backend:demo` alias behaves the same way. The
+demo records point only at `.localhost` pages and never serve a payload.
+
+## Presentation threat-intelligence scenarios
+
+### 6. verified-apple-id.html — PhishTank exact URL
+
+Open `http://signin-portal.localhost:8000/verified-apple-id.html`.
+
+- Initial local result: **High** (approximately 68) from an Apple brand-domain
+  mismatch, password field, suspicious URL text, and the impersonation combo.
+- Enriched result: **Critical** (100) after an exact verified PhishTank match.
+- The popup shows `known-malicious-url`, High confidence, Apple as the target,
+  and a verification time. URLhaus shows no match.
+
+### 7. critical-browser-update.html — URLhaus exact active URL
+
+Open `http://software-update.localhost:8000/critical-browser-update.html`.
+
+- Initial local result: **Low** (approximately 8). There is no form or brand
+  impersonation recognized by local rules.
+- Enriched result: **High** (approximately 68) after URLhaus identifies the
+  exact URL as an online malware-distribution location.
+- The popup shows `known-malware-url`, status `online`, threat
+  `malware_download`, and the tags `exe` and `FakeUpdate`.
+
+### 8. vendor-status.html — both providers, hostname only
+
+Open `http://reputation-lab.localhost:8000/vendor-status.html`.
+
+- Initial and enriched result: **Low** (0), with no local indicators.
+- PhishTank and URLhaus each report other known URLs on the hostname.
+- Both cards explicitly say that hostname-only findings did not independently
+  increase the score. No scored threat-intelligence signal is added.
