@@ -14,6 +14,8 @@
     .lead { max-width: 650px; color: #9cabc0; font-size: 18px; line-height: 1.65; }
     h2 { margin: 58px 0 18px; font-size: 17px; color: #d9e4f3; }
     .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .scenario-slot { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 8px; min-width: 0; }
+    .scenario-slot .card { width: 100%; }
     .card { display: flex; min-height: 250px; flex-direction: column; padding: 24px; border: 1px solid rgba(255,255,255,.1); border-radius: 18px; color: inherit; background: #131f32; text-decoration: none; transition: transform .18s ease, border-color .18s ease; }
     .card:hover { transform: translateY(-3px); border-color: rgba(118,168,255,.55); }
     .provider { width: max-content; padding: 6px 9px; border-radius: 999px; color: #a9c8ff; background: rgba(63,127,240,.15); font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
@@ -23,6 +25,9 @@
     .card p { margin: 0; color: #8fa0b7; line-height: 1.55; }
     .open { margin-top: auto; padding-top: 24px; color: #edf4ff; font-weight: 750; }
     .baselines { grid-template-columns: repeat(5, 1fr); }
+    .feature { grid-template-columns: 1fr; }
+    .feature .card { min-height: 190px; background: linear-gradient(125deg, #13294a, #182038 70%); }
+    .feature .card h3 { margin-top: 18px; }
     .baseline { min-height: 0; padding: 17px; color: #bdc9d8; font-size: 13px; }
     .safe { margin-top: 36px; color: #72849b; font-size: 12px; }
     @media (max-width: 900px) { .grid, .baselines { grid-template-columns: 1fr; } }
@@ -34,26 +39,42 @@
     <h1>Threat intelligence, made visible.</h1>
     <p class="lead">Three safe, local scenarios designed to show exact URL matches, provider-specific evidence, score enrichment, and hostname-only context.</p>
 
+    <h2>Proactive browsing shield</h2>
+    <div class="grid feature">
+      <a class="card" href="http://social-feed.localhost:8000/link-protection.html">
+        <span class="provider">Link protection &middot; live interaction</span>
+        <h3>Social-feed browsing shield</h3>
+        <p>Compare an untouched safe link, a hoverable suspicious-link warning, a known-threat click interstitial, and a post detected after it loads dynamically.</p>
+        <span class="open">Open scenario &rarr;</span>
+      </a>
+    </div>
+
     <h2>Threat intelligence scenarios</h2>
     <div class="grid">
-      <a class="card" href="http://signin-portal.localhost:8000/verified-apple-id.html">
+      <div class="scenario-slot">
+        <a class="card" href="http://signin-portal.localhost:8000/verified-apple-id.html">
         <span class="provider">PhishTank · exact URL</span>
         <h3>Verified credential theft</h3>
         <p>A convincing sign-in page moves from a strong local warning to Critical after a verified phishing match.</p>
         <span class="open">Open scenario →</span>
-      </a>
-      <a class="card" href="http://software-update.localhost:8000/critical-browser-update.html">
+        </a>
+      </div>
+      <div class="scenario-slot">
+        <a class="card" href="http://software-update.localhost:8000/critical-browser-update.html">
         <span class="provider malware">URLhaus · active malware</span>
         <h3>Fake browser update</h3>
         <p>A polished download lure looks quiet to phishing rules, then jumps to High when URLhaus identifies the exact URL.</p>
         <span class="open">Open scenario →</span>
-      </a>
-      <a class="card" href="http://reputation-lab.localhost:8000/vendor-status.html">
+        </a>
+      </div>
+      <div class="scenario-slot">
+        <a class="card" href="http://reputation-lab.localhost:8000/vendor-status.html">
         <span class="provider host">Both · hostname only</span>
         <h3>Shared-host reputation</h3>
         <p>A clean status page inherits context from other reported URLs on its host, without increasing the score.</p>
         <span class="open">Open scenario →</span>
-      </a>
+        </a>
+      </div>
     </div>
 
     <h2>Original detector baselines</h2>

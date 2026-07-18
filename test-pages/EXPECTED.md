@@ -152,3 +152,28 @@ Open `http://reputation-lab.localhost:8000/vendor-status.html`.
 - PhishTank and URLhaus each report other known URLs on the hostname.
 - Both cards explicitly say that hostname-only findings did not independently
   increase the score. No scored threat-intelligence signal is added.
+
+## Proactive link-protection scenario
+
+### 9. link-protection.html -- three protection levels and dynamic rescanning
+
+Open `http://social-feed.localhost:8000/link-protection.html` with both the
+test-page server and local backend running. The page itself should remain
+**Low** risk; the demonstration is about individual outbound links.
+
+- **Safe or unknown:** the Riverside Garden Club destination receives no icon
+  and opens normally.
+- **Suspicious:** both Rewards Bulletin links receive an amber warning icon.
+  Hovering either icon explains the brand-like hostname and reward language.
+  The two tracking variants are sanitized to one destination and share a
+  deduplicated lookup.
+- **Known malicious:** the Account Safety destination receives a red icon
+  because its sanitized URL exactly matches the safe local PhishTank fixture.
+  Clicking it is paused by an interstitial that explains the finding and
+  offers *Stay on this page* or *Proceed anyway*.
+- **Dynamic content:** clicking *Load a new post* inserts a shortened giveaway
+  link. Within a moment, a suspicious-link icon appears without a page reload.
+
+The presentation fixture uses no live malicious destination. The dynamic
+short link has a page-level click handler that prevents navigation; the local
+backend checks only its in-memory indexes and never opens it.

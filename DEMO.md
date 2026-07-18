@@ -19,6 +19,30 @@ You can confirm that the local backend is ready by opening
 with `available`, `records`, and `hostnames`. If the feed is missing, the
 backend still starts and reports threat intelligence as unavailable.
 
+## Proactive link-protection showcase (~2 minutes)
+
+1. From the gallery, open the **Social-feed browsing shield** scenario at
+   `http://social-feed.localhost:8000/link-protection.html`. Point out that
+   PhishLens evaluates where each external link leads without opening it.
+
+2. Compare the first two posts. The ordinary community link has no visible
+   interruption. The reward post has amber warning icons beside both copies of
+   its destination. Hover an icon to show the URL and surrounding-language
+   evidence; explain that tracking variants were sanitized and deduplicated.
+
+3. Click the red-marked **Review sign-in activity** card. PhishLens pauses the
+   click because the sanitized destination exactly matches the safe local
+   PhishTank fixture. Show the reasons, then choose *Stay on this page*.
+
+4. Click **Load a new post**. A shortened giveaway link is inserted into the
+   feed and receives a warning moments later, demonstrating dynamic rescanning
+   without a page refresh.
+
+5. Use the presenter guide on the right to summarize the interaction model:
+   safe/unknown stays quiet, suspicious gets a lightweight hover warning, and
+   known-malicious or highly suspicious destinations get a temporary click
+   interstitial.
+
 ## Threat-intelligence showcase (~3 minutes)
 
 1. **Verified phishing intelligence.** From the gallery, open the PhishTank
@@ -109,4 +133,5 @@ is contacted.
   less current over time.
 - Adversarially tested: split brand names, punycode look-alikes, hidden
   keywords, JS-intercepted forms, and prompt-injection attempts in page
-  content (`npm test` — 64 tests).
+  content, plus link sanitization, deduplication, and risk-level behavior
+  (`npm test` — 108 tests).
