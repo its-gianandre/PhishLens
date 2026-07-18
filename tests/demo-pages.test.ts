@@ -3,7 +3,9 @@ import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
 import { applyThreatIntel } from '../extension/background/enrichment';
 import { runAnalysis } from '../extension/background/pipeline';
+import { assessLink } from '../extension/background/link-analysis';
 import { extractPageEvidence } from '../extension/content/extract-page';
+import { collectExternalLinks } from '../extension/content/link-protection';
 import type { ThreatIntelSummary } from '../extension/shared/types';
 // @ts-expect-error plain-JS module without type declarations
 import { buildPhishTankIndex } from '../backend/threat-intel/parser.mjs';
@@ -45,6 +47,51 @@ function enrich(file: string, url: string) {
 }
 
 describe('presentation threat-intelligence pages', () => {
+  it('demonstrates all three link-protection levels on a low-risk social feed', () => {
+    const html = readFileSync(
+      new URL('../test-pages/link-protection.html', import.meta.url),
+      'utf8',
+    );
+    const pageUrl = 'http://social-feed.localhost:8000/link-protection.html';
+    const dom = new JSDOM(html, { url: pageUrl });
+    const doc = dom.window.document as unknown as Document;
+    const page = runAnalysis(extractPageEvidence(doc, pageUrl), {
+      threatIntelEnabled: true,
+      approvedDomains: [],
+    });
+    expect(page.classification).toBe('Low');
+
+    const links = collectExternalLinks(doc, pageUrl);
+    const byUrl = new Map(links.map((link) => [link.candidate.lookupUrl, link]));
+    const assess = (url: string) => {
+      const link = byUrl.get(url);
+      expect(link).toBeDefined();
+      return {
+        link: link!,
+        result: assessLink(link!.candidate, {
+          status: 'complete',
+          checkedAt: Date.now(),
+          findings: [phishtank.lookup(url), urlhaus.lookup(url)],
+        }),
+      };
+    };
+
+    expect(assess('http://safe-destination.localhost:8000/vendor-status.html').result.risk)
+      .toBe('safe');
+
+    const suspicious = assess('https://paypal-rewards.example/claim-prize');
+    expect(suspicious.result.risk).toBe('suspicious');
+    expect(suspicious.link.anchors).toHaveLength(2);
+    expect(suspicious.link.candidate.urlSignalIds).toContain('brand-in-hostname');
+    expect(suspicious.link.candidate.contextSignalIds).toContain('reward-language');
+
+    const known = assess(
+      'http://signin-portal.localhost:8000/verified-apple-id.html',
+    );
+    expect(known.result.risk).toBe('high');
+    expect(known.result.reasons[0]).toMatch(/exact destination/i);
+  });
+
   it('overlays all presentation matches on the regular backend feeds', async () => {
     try {
       const health = await initializeThreatIntel({
