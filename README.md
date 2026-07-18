@@ -51,7 +51,7 @@ PhishLens combines two independent local indexes:
 - **URLhaus** identifies malware-distribution URLs from an authenticated recent CSV export.
 
 The browser extension never contains either provider credential and never visits a URL from a
-feed. It sends the current page URL only to the backend on `127.0.0.1`, which performs local
+feed. It sends a privacy-sanitized URL only to the backend on `127.0.0.1`, which performs local
 index lookups.
 
 ### URLhaus setup
@@ -113,6 +113,24 @@ bundled snapshot"; absence from the snapshot does not establish that a page is
 safe. The snapshot does not update automatically and becomes less current over
 time.
 
+## Proactive link protection
+
+PhishLens also scans visible links that lead away from the current site without opening them.
+Repeated destinations are deduplicated, and dynamically inserted links are picked up by a
+debounced page observer. URL heuristics recognize shorteners, raw IPs, punycode, userinfo tricks,
+unusual ports, and brand-like hostnames. Nearby urgency, giveaway, credential, or financial
+language can strengthen URL evidence but never produces a warning by itself.
+
+Safe or unknown links remain untouched. Suspicious links receive a small warning icon with a
+hover explanation. Exact known-threat matches and destinations with stacked high-risk evidence
+are paused behind an interstitial that explains the finding and still offers a deliberate
+"Proceed anyway" option.
+
+Only external links are scanned. Before a lookup, PhishLens removes fragments, userinfo and
+tracking parameters and redacts sensitive or high-entropy query values. Raw surrounding post
+text and unsanitized destinations stay in the page's content-script context. Sanitized lookups
+are sent to the local backend in batches and cached for 15 minutes.
+
 ## Architecture
 
 | Layer | Where | Role |
@@ -120,8 +138,8 @@ time.
 | Evidence extraction | `extension/content/` | Collects URL, title, visible text, headings, alt text, and per-form metadata. Never collects entered values, cookies, tokens, or full HTML. |
 | Detectors | `extension/detectors/` | URL, brand-domain mismatch, sensitive forms, social-engineering language, and normalized PhishTank results. Each returns structured **evidence** (`Signal[]`), never a score. |
 | Scoring | `extension/scoring/calculate-risk.ts` | The **only** place evidence becomes a number: per-signal weights + combination bonuses, clamped 0–100, banded into Low <30 ≤ Caution <60 ≤ High <80 ≤ Critical. |
-| UI | `extension/popup/`, `content/warning-banner.ts` | Popup with score/findings/breakdown; in-page banner (High/Critical only); submission interception with Cancel / Leave / View evidence / Proceed. |
-| Local backend | `backend/` | Loads the local PhishTank feed, provides URL lookups, and returns plain-language explanations. It never visits the checked URL or directly assigns a risk score. |
+| UI | `extension/popup/`, `extension/content/` | Popup with score/findings/breakdown; in-page page warnings, link markers, click interstitials, and submission interception. |
+| Local backend | `backend/` | Loads the local PhishTank and URLhaus feeds, provides single and batch URL lookups, and returns plain-language explanations. It never visits the checked URL or directly assigns a risk score. |
 
 ## Hard constraints (by design)
 
@@ -138,7 +156,7 @@ time.
 ## Settings & privacy
 
 The popup's Settings panel provides: technical mode, explanations on/off,
-submission warnings on/off, known-threat lookup on/off, optional history
+submission warnings on/off, proactive link protection on/off, known-threat lookup on/off, optional history
 (off by default), per-domain trust overrides, and one-click deletion of all
 stored results.
 

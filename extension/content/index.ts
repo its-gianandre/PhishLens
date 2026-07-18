@@ -5,6 +5,7 @@ import type {
   ResultUpdatedMessage,
 } from '../shared/types';
 import { extractPageEvidence } from './extract-page';
+import { installLinkProtection } from './link-protection';
 import { installSubmitGuard, showWarningBanner } from './warning-banner';
 
 let contentConfig: ContentConfig | null = null;
@@ -35,6 +36,7 @@ chrome.runtime.onMessage.addListener((message: ResultUpdatedMessage) => {
     const { result, config } = response;
     contentConfig = config;
     applyResult(result);
+    if (config.linkProtection) installLinkProtection();
   } catch {
     // Extension context invalidated (e.g. reload during analysis) — nothing to do.
   }

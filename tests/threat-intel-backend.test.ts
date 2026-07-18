@@ -137,6 +137,28 @@ describe('threat-intel service and backend routes', () => {
         ],
       });
 
+      const batchResponse = await fetch(`${base}/threat-intel/batch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          urls: [
+            'https://login.example/login?campaign=alpha',
+            'https://clean.example/',
+          ],
+        }),
+      });
+      expect(batchResponse.status).toBe(200);
+      const batch = await batchResponse.json();
+      expect(batch.results).toHaveLength(2);
+      expect(batch.results[0].status).toBe('complete');
+      expect(batch.results[0].findings[0]).toMatchObject({
+        provider: 'phishtank', matched: true, matchType: 'exact-url',
+      });
+      expect(batch.results[1].status).toBe('complete');
+      expect(batch.results[1].findings[0]).toMatchObject({
+        provider: 'phishtank', matched: false,
+      });
+
       const invalidResponse = await fetch(`${base}/threat-intel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
