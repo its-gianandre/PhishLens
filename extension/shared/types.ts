@@ -155,6 +155,8 @@ export interface Settings {
   saveHistory: boolean;
   submissionWarnings: boolean;
   threatIntel: boolean;
+  /** Analyze external links before the user follows them. */
+  linkProtection: boolean;
   /** Show in-page banner at or above this score. */
   bannerThreshold: number;
   /** Intercept sensitive submissions at or above this score. */
@@ -176,6 +178,49 @@ export interface AnalyzeMessage { type: 'ANALYZE'; evidence: PageEvidence; }
 export interface GetResultMessage { type: 'GET_RESULT'; tabId: number; }
 export interface ClearDataMessage { type: 'CLEAR_DATA'; }
 export interface GetHistoryMessage { type: 'GET_HISTORY'; }
+export type LinkContextSignalId = Extract<SignalId,
+  | 'urgency-language'
+  | 'account-threat-language'
+  | 'credential-request-language'
+  | 'financial-pressure-language'
+  | 'authority-language'
+  | 'reward-language'
+>;
+
+export type LinkUrlSignalId = Extract<SignalId,
+  | 'ip-address-host'
+  | 'punycode-host'
+  | 'excessive-subdomains'
+  | 'long-url'
+  | 'suspicious-url-keyword'
+  | 'excessive-hyphens'
+  | 'brand-in-hostname'
+  | 'insecure-scheme'
+  | 'url-shortener'
+  | 'suspicious-port'
+  | 'userinfo-in-url'
+>;
+
+/** Privacy-minimized link evidence. Raw surrounding text and unsanitized URLs never leave the page. */
+export interface LinkCandidate {
+  key: string;
+  lookupUrl: string;
+  urlSignalIds: LinkUrlSignalId[];
+  contextSignalIds: LinkContextSignalId[];
+}
+
+export type LinkRisk = 'safe' | 'suspicious' | 'high';
+
+export interface LinkAssessment {
+  key: string;
+  risk: LinkRisk;
+  score: number;
+  reasons: string[];
+  threatIntelStatus: ThreatIntelSummary['status'];
+}
+
+export interface AnalyzeLinksMessage { type: 'ANALYZE_LINKS'; links: LinkCandidate[]; }
+export interface AnalyzeLinksResponse { assessments: LinkAssessment[]; }
 export interface ResultUpdatedMessage {
   type: 'RESULT_UPDATED';
   tabId: number;
@@ -186,12 +231,14 @@ export type ExtensionMessage =
   | GetResultMessage
   | ClearDataMessage
   | GetHistoryMessage
+  | AnalyzeLinksMessage
   | ResultUpdatedMessage;
 
 export interface ContentConfig {
   bannerThreshold: number;
   guardThreshold: number;
   submissionWarnings: boolean;
+  linkProtection: boolean;
 }
 
 export interface AnalyzeResponse { result: AnalysisResult; config: ContentConfig; }

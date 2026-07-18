@@ -1,4 +1,4 @@
-import type { AnalysisResult } from '../shared/types';
+import type { AnalysisResult, LinkAssessment } from '../shared/types';
 import { classifySensitiveField } from './analyze-forms';
 
 const HOST_ID = '__phishlens_root';
@@ -195,6 +195,53 @@ export function installSubmitGuard(result: AnalysisResult): void {
     },
     true,
   );
+}
+
+interface LinkWarningActions {
+  onProceed: () => void;
+}
+
+/** Strong click interstitial reserved for known-malicious or highly suspicious links. */
+export function showLinkWarning(
+  destination: string,
+  assessment: LinkAssessment,
+  actions: LinkWarningActions,
+): void {
+  const shadow = ensureRoot();
+  shadow.querySelector('.overlay')?.remove();
+
+  let host = destination;
+  try {
+    host = new URL(destination).hostname;
+  } catch {
+    // Keep the already sanitized destination as a display fallback.
+  }
+
+  const reasons = assessment.reasons
+    .map((reason) => `<li>${escapeHtml(reason)}</li>`)
+    .join('');
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.innerHTML = `
+    <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="phishlens-link-title">
+      <h1 id="phishlens-link-title">PhishLens paused this link</h1>
+      <p>The destination <strong>${escapeHtml(host)}</strong> has high-risk indicators.
+        Check the address before continuing.</p>
+      <ul>${reasons}</ul>
+      <div>
+        <button data-act="cancel" class="danger">Stay on this page</button>
+        <button data-act="proceed" class="ghost">Proceed anyway</button>
+      </div>
+    </div>`;
+
+  overlay.addEventListener('click', (event) => {
+    const act = (event.target as HTMLElement).getAttribute?.('data-act');
+    if (!act && event.target !== overlay) return;
+    overlay.remove();
+    if (act === 'proceed') actions.onProceed();
+  });
+  shadow.appendChild(overlay);
+  overlay.querySelector<HTMLButtonElement>('[data-act="cancel"]')?.focus();
 }
 
 const approvedForms = new WeakSet<HTMLFormElement>();

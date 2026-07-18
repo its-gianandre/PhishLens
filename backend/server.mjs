@@ -7,6 +7,7 @@ import { normalizeUrl } from './threat-intel/normalize-url.mjs';
 const PORT = Number(process.env.PORT ?? 8787);
 const MAX_BODY_BYTES = 100 * 1024;
 const MAX_URL_LENGTH = 4096;
+const MAX_BATCH_URLS = 100;
 
 function allowedOrigin(origin) {
   if (!origin) return null;
@@ -125,6 +126,31 @@ export function createBackendServer() {
         if (body.url.length > MAX_URL_LENGTH) throw new Error('url exceeds 4096 characters');
         normalizeUrl(body.url);
         sendJson(req, res, 200, getThreatIntelService().lookup(body.url));
+      } catch (error) {
+        sendJson(req, res, error?.status ?? 400, {
+          error: String(error?.message ?? error),
+        });
+      }
+      return;
+    }
+
+    if (req.method === 'POST' && req.url === '/threat-intel/batch') {
+      if (!hasJsonContentType(req)) {
+        sendJson(req, res, 415, { error: 'content type must be application/json' });
+        return;
+      }
+      try {
+        const body = await readJsonBody(req, res);
+        if (!Array.isArray(body?.urls)) throw new Error('urls must be an array');
+        if (body.urls.length > MAX_BATCH_URLS) throw new Error('batch exceeds 100 URLs');
+        for (const url of body.urls) {
+          if (typeof url !== 'string') throw new Error('every URL must be a string');
+          if (url.length > MAX_URL_LENGTH) throw new Error('url exceeds 4096 characters');
+          normalizeUrl(url);
+        }
+        sendJson(req, res, 200, {
+          results: body.urls.map((url) => getThreatIntelService().lookup(url)),
+        });
       } catch (error) {
         sendJson(req, res, error?.status ?? 400, {
           error: String(error?.message ?? error),

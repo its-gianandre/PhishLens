@@ -305,7 +305,8 @@ async function bindSettings(result: AnalysisResult | null): Promise<void> {
   const settings = await loadSettings();
 
   const toggles: Array<keyof Settings> = [
-    'technicalMode', 'explanations', 'submissionWarnings', 'threatIntel', 'saveHistory',
+    'technicalMode', 'explanations', 'submissionWarnings', 'threatIntel', 'linkProtection',
+    'saveHistory',
   ];
   for (const key of toggles) {
     const box = el<HTMLInputElement>(key);

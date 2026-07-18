@@ -6,6 +6,7 @@ export const DEFAULT_SETTINGS: Settings = {
   saveHistory: false,
   submissionWarnings: true,
   threatIntel: true,
+  linkProtection: true,
   bannerThreshold: 60,
   guardThreshold: 45,
   approvedDomains: [],

@@ -1,9 +1,12 @@
 import { LIMITS } from '../shared/constants';
+import { getRegistrableDomain } from '../shared/domain';
 import { loadSettings } from '../shared/settings';
+import { sanitizeLinkUrl } from '../shared/sanitize-link-url';
 import type {
   AnalysisResult,
   ExtensionMessage,
   HistoryEntry,
+  LinkCandidate,
   RiskClass,
   ThreatIntelFinding,
   ThreatIntelSummary,
@@ -13,10 +16,19 @@ import {
   isSameAnalysis,
   unavailableThreatIntel,
 } from './enrichment';
+import {
+  assessLink,
+  LINK_CONTEXT_SIGNAL_IDS,
+  LINK_URL_SIGNAL_IDS,
+} from './link-analysis';
 import { runAnalysis } from './pipeline';
 
 const THREAT_INTEL_URL = 'http://127.0.0.1:8787/threat-intel';
 const THREAT_INTEL_TIMEOUT_MS = 3_000;
+const MAX_LINKS_PER_BATCH = 100;
+const LINK_INTEL_CACHE_MS = 15 * 60 * 1_000;
+
+const linkIntelCache = new Map<string, { expiresAt: number; summary: ThreatIntelSummary }>();
 
 const BADGE_COLORS: Record<RiskClass, string> = {
   Low: '#1f883d',
@@ -144,14 +156,88 @@ function parseThreatIntelSummary(value: unknown): ThreatIntelSummary {
 }
 
 async function fetchThreatIntel(url: string): Promise<ThreatIntelSummary> {
+  const lookupUrl = sanitizeLinkUrl(url);
+  if (!lookupUrl) throw new Error('unsupported threat-intel URL');
   const response = await fetch(THREAT_INTEL_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url }),
+    body: JSON.stringify({ url: lookupUrl }),
     signal: AbortSignal.timeout(THREAT_INTEL_TIMEOUT_MS),
   });
   if (!response.ok) throw new Error(`threat-intel backend returned ${response.status}`);
   return parseThreatIntelSummary(await response.json());
+}
+
+async function fetchThreatIntelBatch(urls: string[]): Promise<ThreatIntelSummary[]> {
+  const response = await fetch(`${THREAT_INTEL_URL}/batch`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ urls }),
+    signal: AbortSignal.timeout(THREAT_INTEL_TIMEOUT_MS),
+  });
+  if (!response.ok) throw new Error(`threat-intel backend returned ${response.status}`);
+  const body = await response.json() as { results?: unknown[] };
+  if (!Array.isArray(body.results) || body.results.length !== urls.length) {
+    throw new Error('invalid batch lookup response');
+  }
+  return body.results.map(parseThreatIntelSummary);
+}
+
+function disabledThreatIntel(): ThreatIntelSummary {
+  return { status: 'disabled', checkedAt: null, findings: [] };
+}
+
+async function lookupLinks(
+  urls: string[],
+  enabled: boolean,
+): Promise<Map<string, ThreatIntelSummary>> {
+  if (!enabled) return new Map(urls.map((url) => [url, disabledThreatIntel()]));
+
+  const now = Date.now();
+  const results = new Map<string, ThreatIntelSummary>();
+  const missing: string[] = [];
+  for (const url of [...new Set(urls)]) {
+    const cached = linkIntelCache.get(url);
+    if (cached && cached.expiresAt > now) results.set(url, cached.summary);
+    else missing.push(url);
+  }
+
+  if (missing.length > 0) {
+    let summaries: ThreatIntelSummary[];
+    try {
+      summaries = await fetchThreatIntelBatch(missing);
+    } catch {
+      summaries = missing.map(() => unavailableThreatIntel());
+    }
+    summaries.forEach((summary, index) => {
+      const url = missing[index];
+      results.set(url, summary);
+      linkIntelCache.set(url, { expiresAt: now + LINK_INTEL_CACHE_MS, summary });
+    });
+  }
+
+  while (linkIntelCache.size > 500) {
+    const oldest = linkIntelCache.keys().next().value as string | undefined;
+    if (!oldest) break;
+    linkIntelCache.delete(oldest);
+  }
+  return results;
+}
+
+function validateLinkCandidate(value: LinkCandidate): LinkCandidate | null {
+  if (!value || typeof value !== 'object') return null;
+  if (typeof value.key !== 'string' || typeof value.lookupUrl !== 'string') return null;
+  const sanitized = sanitizeLinkUrl(value.lookupUrl);
+  if (!sanitized || sanitized !== value.lookupUrl || value.key !== sanitized) return null;
+  if (!Array.isArray(value.urlSignalIds) || !Array.isArray(value.contextSignalIds)) return null;
+
+  const urlSignalIds = [...new Set(value.urlSignalIds)]
+    .filter((id) => LINK_URL_SIGNAL_IDS.has(id))
+    .slice(0, LINK_URL_SIGNAL_IDS.size);
+  const contextSignalIds = [...new Set(value.contextSignalIds)]
+    .filter((id) => LINK_CONTEXT_SIGNAL_IDS.has(id))
+    .slice(0, LINK_CONTEXT_SIGNAL_IDS.size);
+  return { key: sanitized, lookupUrl: sanitized, urlSignalIds, contextSignalIds };
 }
 
 async function notifyResultUpdated(tabId: number, result: AnalysisResult): Promise<void> {
@@ -214,6 +300,7 @@ async function handleMessage(
           bannerThreshold: settings.bannerThreshold,
           guardThreshold: settings.guardThreshold,
           submissionWarnings: settings.submissionWarnings,
+          linkProtection: settings.linkProtection,
         },
       };
     }
@@ -226,11 +313,35 @@ async function handleMessage(
       const { history = [] } = await chrome.storage.local.get('history');
       return { history };
     }
+    case 'ANALYZE_LINKS': {
+      const settings = await loadSettings();
+      if (!settings.linkProtection || !Array.isArray(message.links)) return { assessments: [] };
+      const candidates = message.links
+        .slice(0, MAX_LINKS_PER_BATCH)
+        .map(validateLinkCandidate)
+        .filter((candidate): candidate is LinkCandidate => Boolean(candidate));
+      const unique = [...new Map(candidates.map((candidate) => [candidate.key, candidate])).values()]
+        .filter((candidate) => {
+          const domain = getRegistrableDomain(new URL(candidate.lookupUrl).hostname);
+          return !settings.approvedDomains.includes(domain);
+        });
+      const intel = await lookupLinks(
+        unique.map((candidate) => candidate.lookupUrl),
+        settings.threatIntel,
+      );
+      return {
+        assessments: unique.map((candidate) => assessLink(
+          candidate,
+          intel.get(candidate.lookupUrl) ?? unavailableThreatIntel(),
+        )),
+      };
+    }
     case 'CLEAR_DATA': {
       await chrome.storage.local.remove('history');
       const all = await chrome.storage.session.get(null);
       const resultKeys = Object.keys(all).filter((k) => k.startsWith('result:'));
       if (resultKeys.length) await chrome.storage.session.remove(resultKeys);
+      linkIntelCache.clear();
       return { ok: true };
     }
     case 'RESULT_UPDATED':
