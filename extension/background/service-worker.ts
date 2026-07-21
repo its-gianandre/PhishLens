@@ -92,7 +92,11 @@ function cleanStringArray(value: unknown): string[] {
 function parseFinding(value: unknown): ThreatIntelFinding {
   if (typeof value !== 'object' || value === null) throw new Error('invalid finding');
   const finding = value as Record<string, unknown>;
-  if (finding.provider !== 'phishtank' && finding.provider !== 'urlhaus') {
+  if (
+    finding.provider !== 'phishtank' &&
+    finding.provider !== 'urlhaus' &&
+    finding.provider !== 'openphish'
+  ) {
     throw new Error('invalid provider');
   }
   if (typeof finding.available !== 'boolean' || typeof finding.matched !== 'boolean') {
