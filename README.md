@@ -147,11 +147,12 @@ the current URL against all available indexes. Exact matches can add a
 provider-specific deterministic signal and recalculate the score. Hostname-only
 matches are displayed as supporting information and do not independently add points.
 
-If the snapshot or backend is unavailable, the original heuristic result
-remains active. If a URL is absent, the popup says "No match found in the
-bundled snapshot"; absence from the snapshot does not establish that a page is
-safe. The snapshot does not update automatically and becomes less current over
-time.
+If the feeds or backend are unavailable, the original heuristic result remains
+active. The popup displays only providers that report an exact or hostname
+match. When no provider reports a match, it shows one neutral “Nothing to show
+from threat intelligence feeds” card; this does not establish that a page is
+safe. The bundled snapshot does not update automatically and becomes less
+current over time.
 
 ## Proactive link protection
 

@@ -109,10 +109,10 @@ both expected.
 ## Threat-intelligence UI checks
 
 With the configured backend reachable and its feeds loaded, the popup should show
-`Checking PhishTank, URLhaus, and OpenPhish...` without delaying the initial score. It should then show
-`No match found in the bundled snapshot` for these harmless local fixtures. If
-the backend or snapshot is unavailable, it should show `PhishTank lookup unavailable` while
-preserving the local score and warnings.
+`Checking PhishTank, URLhaus, and OpenPhish...` without delaying the initial score. For a URL
+with no provider matches, it should then show one `Nothing to show from threat intelligence
+feeds` card. Providers with no match or unavailable data remain hidden. If one or more providers
+report a match, only those provider cards appear while the local score and warnings remain active.
 
 An exact verified URL match adds one `known-malicious-url` signal and triggers
 normal deterministic rescoring. A hostname-only match is informational and

@@ -59,10 +59,8 @@ function renderThreatIntel(result: AnalysisResult): string {
 
   // --- PhishTank Card ---
   const phishtank = summary.findings.find((item) => item.provider === 'phishtank');
-  let phishtankCard: string;
-  if (!phishtank?.available) {
-    phishtankCard = `<div class="threat-intel"><strong>PhishTank unavailable</strong></div>`;
-  } else if (phishtank.matched && phishtank.matchType === 'exact-url') {
+  let phishtankCard: string | null = null;
+  if (phishtank?.available && phishtank.matched && phishtank.matchType === 'exact-url') {
     const verified = formatTime(phishtank.verificationTime);
     phishtankCard = `<div class="threat-intel threat-match">
       <strong>PhishTank</strong>
@@ -71,29 +69,18 @@ function renderThreatIntel(result: AnalysisResult): string {
       ${phishtank.targetBrand ? `<div>Target: ${escapeHtml(phishtank.targetBrand)}</div>` : ''}
       ${verified ? `<div>Verified: ${escapeHtml(verified)}</div>` : ''}
     </div>`;
-  } else if (phishtank.matched && phishtank.matchType === 'hostname') {
+  } else if (phishtank?.available && phishtank.matched && phishtank.matchType === 'hostname') {
     phishtankCard = `<div class="threat-intel">
       <strong>PhishTank</strong>
       <div>Other phishing URLs were reported on this hostname in the bundled snapshot.</div>
       <div class="muted">This hostname-only finding did not independently increase the score.</div>
     </div>`;
-  } else {
-    phishtankCard = `<div class="threat-intel">
-      <strong>PhishTank</strong>
-      <div>No match found in the bundled snapshot</div>
-      <div class="muted">Snapshot date: July 16, 2026. This is not a safety guarantee.</div>
-    </div>`;
   }
 
   // --- URLhaus Card ---
   const urlhaus = summary.findings.find((item) => item.provider === 'urlhaus');
-  let urlhausCard: string;
-  if (!urlhaus?.available) {
-    urlhausCard = `<div class="threat-intel">
-      <strong>URLhaus unavailable</strong>
-      <div class="muted">Configure the backend with a URLhaus auth key or cached feed.</div>
-    </div>`;
-  } else if (urlhaus.matched && urlhaus.matchType === 'exact-url') {
+  let urlhausCard: string | null = null;
+  if (urlhaus?.available && urlhaus.matched && urlhaus.matchType === 'exact-url') {
     const observed = formatTime(urlhaus.verificationTime);
     const active = urlhaus.status?.toLowerCase() === 'online';
     urlhausCard = `<div class="threat-intel ${active ? 'threat-match' : ''}">
@@ -105,49 +92,41 @@ function renderThreatIntel(result: AnalysisResult): string {
       ${observed ? `<div>Last observed: ${escapeHtml(observed)}</div>` : ''}
       ${active ? '' : '<div class="muted">Offline matches are displayed but do not increase the score.</div>'}
     </div>`;
-  } else if (urlhaus.matched && urlhaus.matchType === 'hostname') {
+  } else if (urlhaus?.available && urlhaus.matched && urlhaus.matchType === 'hostname') {
     urlhausCard = `<div class="threat-intel">
       <strong>URLhaus</strong>
       <div>Other malware URLs were reported on this hostname.</div>
       <div class="muted">This hostname-only finding did not independently increase the score.</div>
     </div>`;
-  } else {
-    urlhausCard = `<div class="threat-intel">
-      <strong>URLhaus</strong>
-      <div>No malware URL match found in the backend feed</div>
-      <div class="muted">No match is not a safety guarantee.</div>
-    </div>`;
   }
 
   // --- OpenPhish Card ---
   const openphish = summary.findings.find((item) => item.provider === 'openphish');
-  let openphishCard: string;
-  if (!openphish?.available) {
-    openphishCard = `<div class="threat-intel"><strong>OpenPhish unavailable</strong></div>`;
-  } else {
-    if (openphish.matched && openphish.matchType === 'exact-url') {
-      openphishCard = `<div class="threat-intel threat-match">
-        <strong>OpenPhish</strong>
-        <div>Exact phishing URL match in the OpenPhish feed</div>
-        <div>Confidence: High</div>
-        ${openphish.targetBrand ? `<div>Target: ${escapeHtml(openphish.targetBrand)}</div>` : ''}
-      </div>`;
-    } else if (openphish.matched && openphish.matchType === 'hostname') {
-      openphishCard = `<div class="threat-intel">
-        <strong>OpenPhish</strong>
-        <div>Other phishing URLs were reported on this hostname.</div>
-        <div class="muted">This hostname-only finding did not independently increase the score.</div>
-      </div>`;
-    } else {
-      openphishCard = `<div class="threat-intel">
-        <strong>OpenPhish</strong>
-        <div>No phishing URL match found in the backend feed</div>
-        <div class="muted">No match is not a safety guarantee.</div>
-      </div>`;
-    }
+  let openphishCard: string | null = null;
+  if (openphish?.available && openphish.matched && openphish.matchType === 'exact-url') {
+    openphishCard = `<div class="threat-intel threat-match">
+      <strong>OpenPhish</strong>
+      <div>Exact phishing URL match in the OpenPhish feed</div>
+      <div>Confidence: High</div>
+      ${openphish.targetBrand ? `<div>Target: ${escapeHtml(openphish.targetBrand)}</div>` : ''}
+    </div>`;
+  } else if (openphish?.available && openphish.matched && openphish.matchType === 'hostname') {
+    openphishCard = `<div class="threat-intel">
+      <strong>OpenPhish</strong>
+      <div>Other phishing URLs were reported on this hostname.</div>
+      <div class="muted">This hostname-only finding did not independently increase the score.</div>
+    </div>`;
   }
 
-  return `<h2>Threat intelligence</h2>${phishtankCard}${urlhausCard}${openphishCard}`;
+  const matchedCards = [phishtankCard, urlhausCard, openphishCard].filter(Boolean).join('');
+  if (!matchedCards) {
+    return `<h2>Threat intelligence</h2>
+      <div class="threat-intel">
+        <strong>Nothing to show from threat intelligence feeds</strong>
+        <div class="muted">No configured feed reported a match for this URL.</div>
+      </div>`;
+  }
+  return `<h2>Threat intelligence</h2>${matchedCards}`;
 }
 
 function renderResult(result: AnalysisResult, settings: Settings): void {
@@ -195,9 +174,9 @@ function renderResult(result: AnalysisResult, settings: Settings): void {
       </div>
     </div>
     ${findings}
-    ${renderThreatIntel(result)}
     <h2>Recommended action</h2>
     <div class="action">${escapeHtml(result.recommendedAction)}</div>
+    ${renderThreatIntel(result)}
     ${breakdown}
     ${explanationSection}`;
 
@@ -212,7 +191,6 @@ async function fetchExplanation(result: AnalysisResult, settings: Settings): Pro
   box.hidden = false;
   box.textContent = 'Generating explanation…';
   button.disabled = true;
-  button.textContent = 'Generating…';
 
   const request: ExplainRequest = {
     score: result.score,
