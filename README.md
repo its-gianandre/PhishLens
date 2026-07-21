@@ -22,6 +22,9 @@ Webpage → Evidence extraction → Rule-based detection → Risk scoring
 
 ## Quick start
 
+For installation, Chrome loading, test pages, and optional backend instructions,
+see the **[setup guide](SETUP.md)**.
+
 ```bash
 npm install
 npm run build        # bundles the extension into ./dist
