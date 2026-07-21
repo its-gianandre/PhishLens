@@ -11,12 +11,12 @@ import {
   createUrlhausProvider,
   unavailableUrlhausFinding,
 } from './urlhaus/provider.mjs';
+import { fetchOpenPhishFeed } from './openphish/download.mjs';
+import { buildOpenPhishIndex } from './openphish/parser.mjs';
 import {
-  buildOpenPhishIndex,
-  fetchOpenPhishFeed,
   createOpenPhishProvider,
   unavailableOpenPhishFinding,
-} from './providers/openphish.mjs';
+} from './openphish/provider.mjs';
 
 export const DEFAULT_FEED_PATH = fileURLToPath(
   new URL('./data/phishtank-snapshot-2026-07-16.json.gz', import.meta.url),
@@ -31,6 +31,7 @@ const DEMO_URLHAUS_PATH = fileURLToPath(
 const DEMO_OPENPHISH_PATH = fileURLToPath(
   new URL('./data/demo-openphish.txt', import.meta.url),
 );
+
 export const SNAPSHOT_DATE = '2026-07-16';
 
 function mergeIndexes(base, overlay) {
@@ -53,6 +54,7 @@ async function loadDemoIndexes() {
     readFile(DEMO_URLHAUS_PATH, 'utf8'),
     readFile(DEMO_OPENPHISH_PATH, 'utf8').catch(() => ''),
   ]);
+
   return {
     phishtank: buildPhishTankIndex(JSON.parse(phishtankJson)),
     urlhaus: buildUrlhausIndex(urlhausCsv),
@@ -266,6 +268,7 @@ export async function initializeThreatIntel(options = {}) {
     initializeUrlhaus(options, initializedAt, demoIndexes?.urlhaus),
     initializeOpenPhish(options, initializedAt, demoIndexes?.openphish),
   ]);
+
   return getThreatIntelService().health();
 }
 
