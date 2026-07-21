@@ -7,7 +7,7 @@ import type {
   Settings,
 } from '../shared/types';
 
-const BACKEND_URL = 'http://127.0.0.1:8787/explain';
+const BACKEND_URL = 'http://18.220.29.188:8787/explain';
 
 const main = document.getElementById('main')!;
 const settingsSection = document.getElementById('settings')!;
@@ -260,7 +260,7 @@ async function fetchExplanation(result: AnalysisResult, settings: Settings): Pro
       ${technicalDetails}`;
   } catch {
     box.textContent =
-      'Could not reach the explanation backend. Start it with "npm run backend" ' +
+      'Could not reach the explanation backend. ' +
       '(the risk score above is computed locally and does not depend on it).';
   } finally {
     button.disabled = false;

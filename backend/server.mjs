@@ -5,6 +5,7 @@ import { getThreatIntelService, initializeThreatIntel } from './threat-intel/ind
 import { normalizeUrl } from './threat-intel/normalize-url.mjs';
 
 const PORT = Number(process.env.PORT ?? 8787);
+const HOST = process.env.HOST ?? '127.0.0.1';
 const MAX_BODY_BYTES = 100 * 1024;
 const MAX_URL_LENGTH = 4096;
 const MAX_BATCH_URLS = 100;
@@ -94,6 +95,7 @@ export function createBackendServer() {
         ok: true,
         mode: 'local',
         threatIntel: getThreatIntelService().health(),
+        ollama: { configured: Boolean(process.env.OLLAMA_URL) },
       });
       return;
     }
@@ -166,8 +168,8 @@ export function createBackendServer() {
 export async function startBackend(port = PORT, threatIntelOptions = { includeDemoFixtures: true, includeOpenPhish: true }) {
   const threatIntel = await initializeThreatIntel(threatIntelOptions);
   const server = createBackendServer();
-  await new Promise((resolve) => server.listen(port, '127.0.0.1', resolve));
-  console.log(`PhishLens local backend on http://127.0.0.1:${port}`);
+  await new Promise((resolve) => server.listen(port, HOST, resolve));
+  console.log(`PhishLens local backend on http://${HOST}:${port}`);
   const readyProviders = Object.entries(threatIntel.providers)
     .filter(([, provider]) => provider.available)
     .map(([name, provider]) => `${name}: ${provider.records} URLs`);

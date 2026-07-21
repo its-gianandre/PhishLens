@@ -15,6 +15,16 @@ const SIGNAL_ID_PATTERN = /^[a-z][a-z0-9-]{1,40}$/;
 const MAX_SIGNALS = 32;
 const MAX_STRING = 300;
 
+// Optional: an Ollama server that rewrites the deterministic summary in more
+// natural language. Only enabled when OLLAMA_URL is set (see backend/README
+// or the systemd unit on the EC2 host). When unset or unreachable, `explain()`
+// falls back to the local, template-only summary below.
+const OLLAMA_URL = process.env.OLLAMA_URL ?? '';
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? 'llama3.2:3b';
+// Generous timeout: this runs on a small CPU-only box, where a 3B model can
+// take 20-30s per explanation. The popup already shows a "Generating..." state.
+const OLLAMA_TIMEOUT_MS = 45_000;
+
 /** Strip control characters and cap length. Applied to every incoming string. */
 export function sanitizeString(value) {
   return String(value ?? '')
@@ -140,7 +150,57 @@ export function localExplanation(request) {
   };
 }
 
+/**
+ * Builds the prompt sent to Ollama. Only fixed, already-sanitized template
+ * strings (the same `reasons` a user would see without an LLM at all) plus
+ * score/classification/domain/brand are included — never raw signal
+ * evidence or page text — so there is nothing in the prompt for an attacker
+ * to inject instructions into.
+ */
+function buildOllamaPrompt(request, reasons) {
+  const lines = [
+    'You are writing a short summary for a browser phishing-detection tool.',
+    'Use ONLY the facts listed below. Do not invent new claims and do not change the risk level.',
+    `Domain: ${request.domain || '(unknown)'}`,
+    `Risk classification: ${request.classification} (score ${request.score}/100)`,
+  ];
+  if (request.suspectedBrand) lines.push(`Impersonated brand: ${request.suspectedBrand}`);
+  lines.push(
+    reasons.length
+      ? `Detected reasons:\n- ${reasons.join('\n- ')}`
+      : 'No phishing indicators were detected.',
+    '',
+    'Write exactly 2 short plain-English sentences (no more than 45 words total) summarizing ' +
+      'this for a non-technical reader. No markdown.',
+  );
+  return lines.join('\n');
+}
+
+async function generateOllamaSummary(request, reasons) {
+  if (!OLLAMA_URL) return null;
+  try {
+    const response = await fetch(`${OLLAMA_URL}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: OLLAMA_MODEL,
+        prompt: buildOllamaPrompt(request, reasons),
+        stream: false,
+        options: { temperature: 0.2, num_predict: 220 },
+      }),
+      signal: AbortSignal.timeout(OLLAMA_TIMEOUT_MS),
+    });
+    if (!response.ok) return null;
+    const body = await response.json();
+    return sanitizeString(body?.response) || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function explain(request) {
   const sanitized = sanitizeRequest(request);
-  return localExplanation(sanitized);
+  const base = localExplanation(sanitized);
+  const llmSummary = await generateOllamaSummary(sanitized, base.reasons);
+  return llmSummary ? { ...base, summary: llmSummary } : base;
 }
