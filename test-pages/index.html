@@ -13,7 +13,7 @@
     h1 { max-width: 720px; margin: 14px 0 16px; font-size: clamp(42px, 7vw, 76px); line-height: .98; letter-spacing: -.055em; }
     .lead { max-width: 650px; color: #9cabc0; font-size: 18px; line-height: 1.65; }
     h2 { margin: 58px 0 18px; font-size: 17px; color: #d9e4f3; }
-    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
     .scenario-slot { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 8px; min-width: 0; }
     .scenario-slot .card { width: 100%; }
     .card { display: flex; min-height: 250px; flex-direction: column; padding: 24px; border: 1px solid rgba(255,255,255,.1); border-radius: 18px; color: inherit; background: #131f32; text-decoration: none; transition: transform .18s ease, border-color .18s ease; }
@@ -21,6 +21,7 @@
     .provider { width: max-content; padding: 6px 9px; border-radius: 999px; color: #a9c8ff; background: rgba(63,127,240,.15); font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
     .provider.malware { color: #ffbd8b; background: rgba(234,111,32,.14); }
     .provider.host { color: #abdfc1; background: rgba(36,161,91,.14); }
+    .provider.openphish { color: #f472b6; background: rgba(236,72,153,.15); }
     .card h3 { margin: 23px 0 10px; font-size: 23px; letter-spacing: -.025em; }
     .card p { margin: 0; color: #8fa0b7; line-height: 1.55; }
     .open { margin-top: auto; padding-top: 24px; color: #edf4ff; font-weight: 750; }
@@ -30,14 +31,15 @@
     .feature .card h3 { margin-top: 18px; }
     .baseline { min-height: 0; padding: 17px; color: #bdc9d8; font-size: 13px; }
     .safe { margin-top: 36px; color: #72849b; font-size: 12px; }
-    @media (max-width: 900px) { .grid, .baselines { grid-template-columns: 1fr; } }
+    @media (max-width: 1100px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 700px) { .grid, .baselines { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
   <main class="page-shell">
     <div class="eyebrow">Presentation gallery</div>
     <h1>Threat intelligence, made visible.</h1>
-    <p class="lead">Three safe, local scenarios designed to show exact URL matches, provider-specific evidence, score enrichment, and hostname-only context.</p>
+    <p class="lead">Safe, local scenarios designed to show exact URL matches, provider-specific evidence, score enrichment, and hostname-only context.</p>
 
     <h2>Proactive browsing shield</h2>
     <div class="grid feature">
@@ -68,8 +70,16 @@
         </a>
       </div>
       <div class="scenario-slot">
+        <a class="card" href="openphish-demo.html">
+        <span class="provider openphish">OpenPhish · exact match</span>
+        <h3>Active phishing feed match</h3>
+        <p>A simulated phishing page matches an exact URL in the local OpenPhish feed snapshot, triggering a threat intelligence warning.</p>
+        <span class="open">Open scenario →</span>
+        </a>
+      </div>
+      <div class="scenario-slot">
         <a class="card" href="http://reputation-lab.localhost:8000/vendor-status.html">
-        <span class="provider host">Both · hostname only</span>
+        <span class="provider host">Multi-provider · hostname only</span>
         <h3>Shared-host reputation</h3>
         <p>A clean status page inherits context from other reported URLs on its host, without increasing the score.</p>
         <span class="open">Open scenario →</span>
