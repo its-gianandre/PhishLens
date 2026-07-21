@@ -252,3 +252,10 @@ Augustin Birladeanu
 
 Saumit Guduguntla
 
+### Contributor Note
+
+Claude may still appear in GitHub’s contributor display because it was previously used as an AI-assisted development tool through a team member’s account. Claude is not a human team member or an official contributor to the project, and the related Claude-authored commits were removed from the repository’s current commit history.
+
+The majority of the project’s development was completed using Codex and GPT-5.6, including implementation, debugging, refinement, and documentation support. All final code, product decisions, testing, and submitted materials were reviewed and maintained by the human project team.
+
+
