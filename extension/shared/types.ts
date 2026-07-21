@@ -34,7 +34,9 @@ export type SignalId =
   | 'reward-language'
   // Threat intel
   | 'known-malicious-url'
-  | 'known-malware-url';
+  | 'known-malware-url'
+  | 'known-openphish-url'
+  | 'OPENPHISH_EXACT_MATCH';
 
 export type Severity = 'low' | 'medium' | 'high';
 
@@ -95,7 +97,7 @@ export interface ScoreLine {
   points: number;
 }
 
-export type ThreatIntelProvider = 'phishtank' | 'urlhaus';
+export type ThreatIntelProvider = 'phishtank' | 'urlhaus' | 'openphish';
 export type ThreatMatchType = 'exact-url' | 'hostname' | 'registrable-domain';
 
 export interface ThreatIntelFinding {
