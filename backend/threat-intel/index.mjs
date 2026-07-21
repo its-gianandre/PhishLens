@@ -11,12 +11,14 @@ import {
   createUrlhausProvider,
   unavailableUrlhausFinding,
 } from './urlhaus/provider.mjs';
-import { fetchOpenPhishFeed } from './openphish/download.mjs';
-import { buildOpenPhishIndex } from './openphish/parser.mjs';
+
+// Import directly from providers/openphish.mjs
 import {
+  fetchOpenPhishFeed,
+  buildOpenPhishIndex,
   createOpenPhishProvider,
   unavailableOpenPhishFinding,
-} from './openphish/provider.mjs';
+} from './providers/openphish.mjs';
 
 export const DEFAULT_FEED_PATH = fileURLToPath(
   new URL('./data/phishtank-snapshot-2026-07-16.json.gz', import.meta.url),
@@ -215,7 +217,10 @@ async function initializeUrlhaus(options, initializedAt, demoIndex) {
 }
 
 async function initializeOpenPhish(options, initializedAt, demoIndex) {
-  if (!options.includeOpenPhish) {
+  // Default to true if includeOpenPhish isn't explicitly false
+  const includeOpenPhish = options.includeOpenPhish ?? true;
+  
+  if (!includeOpenPhish) {
     state.openphish = emptyProviderState(createOpenPhishProvider(null));
     return;
   }
