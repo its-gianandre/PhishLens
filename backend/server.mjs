@@ -93,7 +93,7 @@ export function createBackendServer() {
     if (req.method === 'GET' && req.url === '/health') {
       sendJson(req, res, 200, {
         ok: true,
-        mode: 'local',
+        mode: 'self-hosted',
         threatIntel: getThreatIntelService().health(),
         ollama: { configured: Boolean(process.env.OLLAMA_URL) },
       });
@@ -169,7 +169,7 @@ export async function startBackend(port = PORT, threatIntelOptions = { includeDe
   const threatIntel = await initializeThreatIntel(threatIntelOptions);
   const server = createBackendServer();
   await new Promise((resolve) => server.listen(port, HOST, resolve));
-  console.log(`PhishLens local backend on http://${HOST}:${port}`);
+  console.log(`PhishLens backend listening on http://${HOST}:${port}`);
   const readyProviders = Object.entries(threatIntel.providers)
     .filter(([, provider]) => provider.available)
     .map(([name, provider]) => `${name}: ${provider.records} URLs`);

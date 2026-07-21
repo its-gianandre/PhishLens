@@ -1,3 +1,4 @@
+import { BACKEND_ORIGIN } from '../shared/constants';
 import { loadSettings, saveSettings } from '../shared/settings';
 import type {
   AnalysisResult,
@@ -7,7 +8,8 @@ import type {
   Settings,
 } from '../shared/types';
 
-const BACKEND_URL = 'http://18.220.29.188:8787/explain';
+const BACKEND_URL = `${BACKEND_ORIGIN}/explain`;
+const EXPLANATION_TIMEOUT_MS = 55_000;
 
 const main = document.getElementById('main')!;
 const settingsSection = document.getElementById('settings')!;
@@ -89,7 +91,7 @@ function renderThreatIntel(result: AnalysisResult): string {
   if (!urlhaus?.available) {
     urlhausCard = `<div class="threat-intel">
       <strong>URLhaus unavailable</strong>
-      <div class="muted">Configure the local backend with a URLhaus auth key or cached feed.</div>
+      <div class="muted">Configure the backend with a URLhaus auth key or cached feed.</div>
     </div>`;
   } else if (urlhaus.matched && urlhaus.matchType === 'exact-url') {
     const observed = formatTime(urlhaus.verificationTime);
@@ -112,32 +114,35 @@ function renderThreatIntel(result: AnalysisResult): string {
   } else {
     urlhausCard = `<div class="threat-intel">
       <strong>URLhaus</strong>
-      <div>No malware URL match found in the local feed</div>
+      <div>No malware URL match found in the backend feed</div>
       <div class="muted">No match is not a safety guarantee.</div>
     </div>`;
   }
 
   // --- OpenPhish Card ---
   const openphish = summary.findings.find((item) => item.provider === 'openphish');
-  let openphishCard = '';
-  if (openphish?.available) {
+  let openphishCard: string;
+  if (!openphish?.available) {
+    openphishCard = `<div class="threat-intel"><strong>OpenPhish unavailable</strong></div>`;
+  } else {
     if (openphish.matched && openphish.matchType === 'exact-url') {
       openphishCard = `<div class="threat-intel threat-match">
         <strong>OpenPhish</strong>
-        <div>Exact verified active phishing URL match</div>
+        <div>Exact phishing URL match in the OpenPhish feed</div>
         <div>Confidence: High</div>
         ${openphish.targetBrand ? `<div>Target: ${escapeHtml(openphish.targetBrand)}</div>` : ''}
       </div>`;
     } else if (openphish.matched && openphish.matchType === 'hostname') {
       openphishCard = `<div class="threat-intel">
         <strong>OpenPhish</strong>
-        <div>Other active phishing URLs were reported on this hostname.</div>
+        <div>Other phishing URLs were reported on this hostname.</div>
         <div class="muted">This hostname-only finding did not independently increase the score.</div>
       </div>`;
     } else {
       openphishCard = `<div class="threat-intel">
         <strong>OpenPhish</strong>
-        <div>No active phishing match found in feed</div>
+        <div>No phishing URL match found in the backend feed</div>
+        <div class="muted">No match is not a safety guarantee.</div>
       </div>`;
     }
   }
@@ -223,6 +228,7 @@ async function fetchExplanation(result: AnalysisResult, settings: Settings): Pro
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(request),
+      signal: AbortSignal.timeout(EXPLANATION_TIMEOUT_MS),
     });
     if (!response.ok) throw new Error(`backend returned ${response.status}`);
     const explanation: ExplainResponse = await response.json();
@@ -252,8 +258,13 @@ async function fetchExplanation(result: AnalysisResult, settings: Settings): Pro
              : ''}
          </details>`
       : '';
+    const explanationSource = explanation.summarySource === 'ollama'
+      ? 'Evidence-based explanation (AI-polished summary)'
+      : explanation.summarySource === 'local-template'
+        ? 'Evidence-based template explanation'
+        : 'Evidence-based explanation';
     box.innerHTML = `
-      <div class="explanation-source">Evidence-based local explanation</div>
+      <div class="explanation-source">${explanationSource}</div>
       <p>${escapeHtml(explanation.summary)}</p>
       ${reasons}
       ${citations}

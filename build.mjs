@@ -1,14 +1,18 @@
 import { build } from 'esbuild';
 import { cp, mkdir } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const outdir = 'dist';
+const projectRoot = dirname(fileURLToPath(import.meta.url));
+const fromRoot = (...parts) => join(projectRoot, ...parts);
+const outdir = fromRoot('dist');
 await mkdir(outdir, { recursive: true });
 
 await build({
   entryPoints: {
-    'service-worker': 'extension/background/service-worker.ts',
-    content: 'extension/content/index.ts',
-    popup: 'extension/popup/popup.ts',
+    'service-worker': fromRoot('extension', 'background', 'service-worker.ts'),
+    content: fromRoot('extension', 'content', 'index.ts'),
+    popup: fromRoot('extension', 'popup', 'popup.ts'),
   },
   bundle: true,
   format: 'iife',
@@ -18,8 +22,8 @@ await build({
   logLevel: 'info',
 });
 
-await cp('extension/manifest.json', `${outdir}/manifest.json`);
-await cp('extension/popup/popup.html', `${outdir}/popup.html`);
-await cp('extension/popup/popup.css', `${outdir}/popup.css`);
+await cp(fromRoot('extension', 'manifest.json'), join(outdir, 'manifest.json'));
+await cp(fromRoot('extension', 'popup', 'popup.html'), join(outdir, 'popup.html'));
+await cp(fromRoot('extension', 'popup', 'popup.css'), join(outdir, 'popup.css'));
 
 console.log('Built extension into ./dist — load it via chrome://extensions → "Load unpacked" → select the dist folder.');

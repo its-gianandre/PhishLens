@@ -16,6 +16,8 @@ import { buildUrlhausIndex } from '../backend/threat-intel/urlhaus/parser.mjs';
 // @ts-expect-error plain-JS module without type declarations
 import { createUrlhausProvider } from '../backend/threat-intel/urlhaus/provider.mjs';
 // @ts-expect-error plain-JS module without type declarations
+import { buildOpenPhishIndex, createOpenPhishProvider } from '../backend/threat-intel/providers/openphish.mjs';
+// @ts-expect-error plain-JS module without type declarations
 import { getThreatIntelService, initializeThreatIntel, resetThreatIntelForTests } from '../backend/threat-intel/index.mjs';
 
 const phishtankRecords = JSON.parse(readFileSync(
@@ -26,8 +28,13 @@ const urlhausCsv = readFileSync(
   new URL('../backend/threat-intel/data/demo-urlhaus.csv', import.meta.url),
   'utf8',
 );
+const openphishText = readFileSync(
+  new URL('../backend/threat-intel/data/demo-openphish.txt', import.meta.url),
+  'utf8',
+);
 const phishtank = createPhishTankProvider(buildPhishTankIndex(phishtankRecords));
 const urlhaus = createUrlhausProvider(buildUrlhausIndex(urlhausCsv));
+const openphish = createOpenPhishProvider(buildOpenPhishIndex(openphishText));
 
 function analyze(file: string, url: string) {
   const html = readFileSync(new URL(`../test-pages/${file}`, import.meta.url), 'utf8');
@@ -41,7 +48,7 @@ function enrich(file: string, url: string) {
   const summary: ThreatIntelSummary = {
     status: 'complete',
     checkedAt: Date.now(),
-    findings: [phishtank.lookup(url), urlhaus.lookup(url)],
+    findings: [phishtank.lookup(url), urlhaus.lookup(url), openphish.lookup(url)],
   };
   return { local, enriched: applyThreatIntel(local, summary) };
 }
@@ -99,6 +106,8 @@ describe('presentation threat-intelligence pages', () => {
         urlhausFeedPath: new URL('./fixtures/urlhaus-small.csv', import.meta.url),
         urlhausAuthKey: '',
         includeDemoFixtures: true,
+        includeOpenPhish: true,
+        openphishFeedPath: new URL('../backend/threat-intel/data/demo-openphish.txt', import.meta.url),
       });
 
       expect(health.providers.phishtank).toMatchObject({
@@ -109,6 +118,11 @@ describe('presentation threat-intelligence pages', () => {
       expect(health.providers.urlhaus).toMatchObject({
         available: true,
         records: 4,
+        source: 'configured-file+demo-fixtures',
+      });
+      expect(health.providers.openphish).toMatchObject({
+        available: true,
+        records: 2,
         source: 'configured-file+demo-fixtures',
       });
       expect(getThreatIntelService().lookup(
@@ -123,10 +137,10 @@ describe('presentation threat-intelligence pages', () => {
       ]));
       expect(getThreatIntelService().lookup(
         'http://reputation-lab.localhost:8000/vendor-status.html',
-      ).findings).toEqual([
+      ).findings).toEqual(expect.arrayContaining([
         expect.objectContaining({ provider: 'phishtank', matchType: 'hostname' }),
         expect.objectContaining({ provider: 'urlhaus', matchType: 'hostname' }),
-      ]);
+      ]));
     } finally {
       resetThreatIntelForTests();
     }
@@ -164,6 +178,23 @@ describe('presentation threat-intelligence pages', () => {
     ]));
   });
 
+  it('shows a scored exact OpenPhish match on the demo page', () => {
+    const { local, enriched } = enrich(
+      'openphish-demo.html',
+      'http://localhost:8000/openphish-demo.html',
+    );
+
+    expect(local.classification).toBe('Low');
+    expect(enriched.score).toBeGreaterThan(local.score);
+    expect(enriched.signals.map((signal) => signal.id)).toContain('known-malicious-url');
+    expect(enriched.threatIntel.findings).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        provider: 'openphish',
+        matchType: 'exact-url',
+      }),
+    ]));
+  });
+
   it('shows both hostname findings without changing the clean page score', () => {
     const { local, enriched } = enrich(
       'vendor-status.html',
@@ -172,10 +203,10 @@ describe('presentation threat-intelligence pages', () => {
 
     expect(local.score).toBe(0);
     expect(enriched.score).toBe(local.score);
-    expect(enriched.threatIntel.findings).toEqual([
+    expect(enriched.threatIntel.findings).toEqual(expect.arrayContaining([
       expect.objectContaining({ provider: 'phishtank', matchType: 'hostname' }),
       expect.objectContaining({ provider: 'urlhaus', matchType: 'hostname' }),
-    ]);
+    ]));
     expect(enriched.signals.map((signal) => signal.id)).not.toEqual(expect.arrayContaining([
       'known-malicious-url',
       'known-malware-url',

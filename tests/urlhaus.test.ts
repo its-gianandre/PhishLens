@@ -95,6 +95,7 @@ describe('URLhaus service integration', () => {
       feedPath: 'missing-phishtank-feed.json.gz',
       urlhausFeedPath: fixtureUrl,
       urlhausAuthKey: '',
+      includeOpenPhish: false,
     });
     expect(health.providers).toMatchObject({
       phishtank: { available: false },
@@ -117,6 +118,7 @@ describe('URLhaus service integration', () => {
       feedPath: 'missing-phishtank-feed.json.gz',
       urlhausFeedPath: fixtureUrl,
       urlhausAuthKey: 'secret-key',
+      includeOpenPhish: false,
       fetchImpl: vi.fn().mockRejectedValue(new Error('network error containing secret-key')),
     });
     expect(health.providers.urlhaus).toMatchObject({
@@ -135,6 +137,7 @@ describe('URLhaus service integration', () => {
       feedPath: 'missing-phishtank-feed.json.gz',
       urlhausFeedPath: 'missing-urlhaus-cache.csv',
       urlhausAuthKey: 'secret-key',
+      includeOpenPhish: false,
       fetchImpl: vi.fn().mockResolvedValue(new Response('id,url\n', { status: 200 })),
     });
     expect(health.providers.urlhaus).toMatchObject({ available: false, records: 0 });

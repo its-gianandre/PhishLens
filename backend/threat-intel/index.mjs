@@ -11,12 +11,10 @@ import {
   createUrlhausProvider,
   unavailableUrlhausFinding,
 } from './urlhaus/provider.mjs';
-
-// Import directly from providers/openphish.mjs
 import {
-  fetchOpenPhishFeed,
   buildOpenPhishIndex,
   createOpenPhishProvider,
+  fetchOpenPhishFeed,
   unavailableOpenPhishFinding,
 } from './providers/openphish.mjs';
 
@@ -25,6 +23,9 @@ export const DEFAULT_FEED_PATH = fileURLToPath(
 );
 export const DEFAULT_URLHAUS_CACHE_PATH = fileURLToPath(
   new URL('./data/urlhaus-recent.csv', import.meta.url),
+);
+export const DEFAULT_OPENPHISH_CACHE_PATH = fileURLToPath(
+  new URL('./data/openphish-feed.txt', import.meta.url),
 );
 const DEMO_PHISHTANK_PATH = new URL('./data/demo-phishtank.json', import.meta.url);
 const DEMO_URLHAUS_PATH = fileURLToPath(
@@ -131,18 +132,29 @@ function validateUrlhausIndex(index) {
   return index;
 }
 
-async function writeUrlhausCache(cachePath, csv) {
+async function writeTextCache(cachePath, text) {
   const temporaryPath = `${cachePath}.${process.pid}.${Date.now()}.tmp`;
   try {
-    await writeFile(temporaryPath, csv, 'utf8');
+    await writeFile(temporaryPath, text, 'utf8');
     await rename(temporaryPath, cachePath);
   } finally {
     await unlink(temporaryPath).catch(() => undefined);
   }
 }
 
+async function writeUrlhausCache(cachePath, csv) {
+  await writeTextCache(cachePath, csv);
+}
+
 async function loadUrlhausCache(cachePath) {
   return validateUrlhausIndex(await loadUrlhausFeed(cachePath));
+}
+
+function validateOpenPhishIndex(index) {
+  if (!index || index.exactUrlCount < 1) {
+    throw new Error('OpenPhish feed contains no valid URL records');
+  }
+  return index;
 }
 
 async function initializeUrlhaus(options, initializedAt, demoIndex) {
@@ -224,19 +236,41 @@ async function initializeOpenPhish(options, initializedAt, demoIndex) {
     state.openphish = emptyProviderState(createOpenPhishProvider(null));
     return;
   }
+  const cachePath = options.openphishCachePath ?? DEFAULT_OPENPHISH_CACHE_PATH;
   try {
-    const textData = await fetchOpenPhishFeed(options.fetchImpl);
-    const baseIndex = buildOpenPhishIndex(textData);
+    let baseIndex;
+    let source;
+    let warning = null;
+    if (options.openphishFeedPath) {
+      baseIndex = validateOpenPhishIndex(buildOpenPhishIndex(
+        await readFile(options.openphishFeedPath, 'utf8'),
+      ));
+      source = 'configured-file';
+    } else {
+      try {
+        const textData = await fetchOpenPhishFeed(options.fetchImpl);
+        baseIndex = validateOpenPhishIndex(buildOpenPhishIndex(textData));
+        source = 'live-download';
+        try {
+          await writeTextCache(cachePath, textData);
+        } catch {
+          warning = 'OpenPhish feed loaded, but the local cache could not be updated';
+        }
+      } catch (downloadError) {
+        baseIndex = validateOpenPhishIndex(buildOpenPhishIndex(await readFile(cachePath, 'utf8')));
+        source = 'local-cache-fallback';
+        warning = String(downloadError?.message ?? downloadError);
+      }
+    }
     const index = mergeIndexes(baseIndex, demoIndex);
-    const source = demoIndex ? 'live-download+demo-fixtures' : 'live-download';
     state.openphish = {
       available: true,
       index,
       provider: createOpenPhishProvider(index),
       initializedAt,
       updatedAt: initializedAt,
-      source,
-      error: null,
+      source: demoIndex ? `${source}+demo-fixtures` : source,
+      error: warning,
     };
   } catch (error) {
     if (demoIndex) {
@@ -251,11 +285,15 @@ async function initializeOpenPhish(options, initializedAt, demoIndex) {
       };
       return;
     }
-    state.openphish = {
-      ...emptyProviderState(createOpenPhishProvider(null)),
-      initializedAt,
-      error: String(error?.message ?? error),
-    };
+    if (!state.openphish.available) {
+      state.openphish = {
+        ...emptyProviderState(createOpenPhishProvider(null)),
+        initializedAt,
+        error: String(error?.message ?? error),
+      };
+    } else {
+      state.openphish = { ...state.openphish, error: String(error?.message ?? error) };
+    }
   }
 }
 

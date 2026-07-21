@@ -1,4 +1,4 @@
-import { LIMITS } from '../shared/constants';
+import { BACKEND_ORIGIN, LIMITS } from '../shared/constants';
 import { getRegistrableDomain } from '../shared/domain';
 import { loadSettings } from '../shared/settings';
 import { sanitizeLinkUrl } from '../shared/sanitize-link-url';
@@ -23,7 +23,7 @@ import {
 } from './link-analysis';
 import { runAnalysis } from './pipeline';
 
-const THREAT_INTEL_URL = 'http://18.220.29.188:8787/threat-intel';
+const THREAT_INTEL_URL = `${BACKEND_ORIGIN}/threat-intel`;
 const THREAT_INTEL_TIMEOUT_MS = 3_000;
 const MAX_LINKS_PER_BATCH = 100;
 const LINK_INTEL_CACHE_MS = 15 * 60 * 1_000;
@@ -56,7 +56,8 @@ async function updateBadge(tabId: number, result: AnalysisResult): Promise<void>
 }
 
 async function appendHistory(result: AnalysisResult): Promise<void> {
-  const { history = [] } = await chrome.storage.local.get('history');
+  const stored = await chrome.storage.local.get('history');
+  const history = Array.isArray(stored.history) ? stored.history as HistoryEntry[] : [];
   const entry: HistoryEntry = {
     url: result.url,
     domain: result.domain,

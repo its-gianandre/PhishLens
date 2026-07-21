@@ -20,6 +20,7 @@ const temporaryFiles: string[] = [];
 const phishtankOnly = {
   urlhausAuthKey: '',
   urlhausFeedPath: 'missing-urlhaus-test-cache.csv',
+  includeOpenPhish: false,
 };
 
 afterEach(async () => {

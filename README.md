@@ -17,7 +17,7 @@ explanation — never a black-box verdict.
 
 ```
 Webpage → Evidence extraction → Rule-based detection → Risk scoring
-        → Local explanation → Warning and recommended action
+        → AWS-hosted backend → Optional Ollama summary → Warning and recommended action
 ```
 
 ## Quick start
@@ -27,7 +27,7 @@ npm install
 npm run build        # bundles the extension into ./dist
 npm test             # unit / integration / adversarial tests
 npm run test-pages   # harmless phishing simulations on http://localhost:8000
-npm run backend      # local explanation + threat-intel backend on 127.0.0.1:8787
+npm run backend      # optional local backend for development on 127.0.0.1:8787
 npm run threat-intel:test-feed  # verify the local PhishTank feed
 ```
 
@@ -36,23 +36,51 @@ Load the extension: `chrome://extensions` → enable **Developer mode** →
 `http://localhost:8000/` and click through the test pages
 (expectations documented in `test-pages/EXPECTED.md`).
 
-## Local explanations
+## AWS-hosted explanations
 
-The backend converts validated detector signals into plain-language and
-technical explanations using deterministic templates. Evidence citations are
-copied directly from the detected signals, and no paid external service or API
-key is required.
+The extension is configured to call the backend at `http://18.220.29.188:8787`.
+That backend runs in AWS and is configured to reach an Ollama service. The
+repository does not assume whether Ollama shares the same server or runs in a
+separate AWS service; only `OLLAMA_URL` and `OLLAMA_MODEL` connect the two.
 
-## Local threat intelligence
+Repository updates do not deploy themselves. After publishing this revision to
+AWS, verify that `GET /health` includes `providers.openphish` and reports
+`ollama.configured: true`. The checked-in endpoint currently uses plain HTTP;
+place it behind HTTPS before using PhishLens for non-demo browsing so lookup
+traffic and backend responses cannot be observed or altered in transit.
 
-PhishLens combines two independent local indexes:
+The backend first builds a deterministic explanation from validated detector
+signals. When `OLLAMA_URL` is configured and reachable, Ollama rewrites only
+the short summary. It never receives raw page text, signal descriptions, or
+evidence snippets, and it cannot change the score, reasons, recommended action,
+limitations, or citations. If Ollama is unset, times out, or returns an invalid
+response, the deterministic template summary is returned automatically.
+
+For local backend development, optionally point `OLLAMA_URL` at a reachable
+Ollama server before starting the process:
+
+```powershell
+$env:OLLAMA_URL = 'http://127.0.0.1:11434'
+$env:OLLAMA_MODEL = 'llama3.2:3b'
+npm run backend
+```
+
+The extension continues to use `BACKEND_ORIGIN` from
+`extension/shared/constants.ts`; change that value and rebuild only when you
+specifically want the extension to exercise a local backend.
+
+## Backend threat intelligence
+
+PhishLens combines three independent server-side indexes:
 
 - **PhishTank** identifies verified phishing URLs from the bundled immutable snapshot.
 - **URLhaus** identifies malware-distribution URLs from an authenticated recent CSV export.
+- **OpenPhish** identifies phishing URLs from its public community feed, refreshed when the
+  backend starts and cached for offline fallback.
 
 The browser extension never contains either provider credential and never visits a URL from a
-feed. It sends a privacy-sanitized URL only to the backend on `127.0.0.1`, which performs local
-index lookups.
+feed. It sends a privacy-sanitized URL only to the configured backend, which performs index
+lookups without visiting the submitted destination.
 
 ### URLhaus setup
 
@@ -77,6 +105,18 @@ logs and error messages.
 Only exact URLhaus matches whose feed status is `online` affect scoring. Exact offline matches and
 hostname-only matches remain visible as supporting context but do not independently add points.
 
+### OpenPhish setup
+
+OpenPhish requires no API key. When `includeOpenPhish` is enabled (the default backend command
+enables it), startup downloads `https://www.openphish.com/feed.txt`, validates the URLs, and writes
+the ignored cache `backend/threat-intel/data/openphish-feed.txt`. A failed refresh falls back to a
+valid cache. Empty, malformed, or oversized downloads are rejected rather than replacing a valid
+provider. The safe presentation entries in `demo-openphish.txt` are overlaid separately.
+
+An exact OpenPhish URL match contributes the existing `known-malicious-url` signal. If PhishTank
+and OpenPhish both contain the same URL, PhishLens emits that scored signal only once. Hostname-only
+matches remain informational.
+
 ### PhishTank snapshot
 
 PhishLens includes a dated, immutable PhishTank snapshot at:
@@ -98,12 +138,12 @@ npm run backend
 ```
 
 The backend decompresses and indexes the snapshot once at startup. `GET /health`
-reports whether PhishTank is available and the number of indexed URLs and
-hostnames without exposing the feed path.
+reports whether each provider is available and the number of indexed URLs and
+hostnames without exposing feed paths.
 
-Page analysis remains local and appears immediately. When known-threat lookup
-is enabled, the service worker asynchronously asks the local backend to check
-the current URL against both available indexes. Exact matches can add a
+Page analysis remains in the extension and appears immediately. When known-threat lookup
+is enabled, the service worker asynchronously asks the configured backend to check
+the current URL against all available indexes. Exact matches can add a
 provider-specific deterministic signal and recalculate the score. Hostname-only
 matches are displayed as supporting information and do not independently add points.
 
@@ -129,7 +169,7 @@ are paused behind an interstitial that explains the finding and still offers a d
 Only external links are scanned. Before a lookup, PhishLens removes fragments, userinfo and
 tracking parameters and redacts sensitive or high-entropy query values. Raw surrounding post
 text and unsanitized destinations stay in the page's content-script context. Sanitized lookups
-are sent to the local backend in batches and cached for 15 minutes.
+are sent to the configured backend in batches and cached for 15 minutes.
 
 ## Architecture
 
@@ -139,7 +179,7 @@ are sent to the local backend in batches and cached for 15 minutes.
 | Detectors | `extension/detectors/` | URL, brand-domain mismatch, sensitive forms, social-engineering language, and normalized PhishTank results. Each returns structured **evidence** (`Signal[]`), never a score. |
 | Scoring | `extension/scoring/calculate-risk.ts` | The **only** place evidence becomes a number: per-signal weights + combination bonuses, clamped 0–100, banded into Low <30 ≤ Caution <60 ≤ High <80 ≤ Critical. |
 | UI | `extension/popup/`, `extension/content/` | Popup with score/findings/breakdown; in-page page warnings, link markers, click interstitials, and submission interception. |
-| Local backend | `backend/` | Loads the local PhishTank and URLhaus feeds, provides single and batch URL lookups, and returns plain-language explanations. It never visits the checked URL or directly assigns a risk score. |
+| Backend service | `backend/` | Runs in AWS for the current build, loads PhishTank, URLhaus, and OpenPhish feeds, provides single and batch URL lookups, and returns deterministic explanations with an optional Ollama-rewritten summary. It never visits the checked URL or directly assigns a risk score. |
 
 ## Hard constraints (by design)
 
@@ -150,8 +190,8 @@ are sent to the local backend in batches and cached for 15 minutes.
   and treated as untrusted (prompt-injection-resistant) input.
 - All webpage content is treated as attacker-controlled input
   (see `tests/adversarial.test.ts`).
-- Browsing URLs are checked only against the local feed in this phase; they are
-  not sent to PhishTank or another third party.
+- Sanitized browsing URLs are sent only to the configured PhishLens backend for
+  index lookup; they are not sent onward to PhishTank, URLhaus, or Ollama.
 
 ## Settings & privacy
 

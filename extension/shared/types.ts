@@ -34,9 +34,7 @@ export type SignalId =
   | 'reward-language'
   // Threat intel
   | 'known-malicious-url'
-  | 'known-malware-url'
-  | 'known-openphish-url'
-  | 'OPENPHISH_EXACT_MATCH';
+  | 'known-malware-url';
 
 export type Severity = 'low' | 'medium' | 'high';
 
@@ -245,7 +243,7 @@ export interface ContentConfig {
 
 export interface AnalyzeResponse { result: AnalysisResult; config: ContentConfig; }
 
-// ---- Local explanation backend contract ----
+// ---- Explanation backend contract ----
 
 export interface ExplainRequest {
   score: number;
@@ -264,6 +262,8 @@ export interface ExplainCitation {
 
 export interface ExplainResponse {
   summary: string;
+  /** Optional for compatibility with backends deployed before Ollama support. */
+  summarySource?: 'local-template' | 'ollama';
   reasons: string[];
   recommendedAction: string;
   technicalExplanation: string;

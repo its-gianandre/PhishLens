@@ -1,5 +1,8 @@
 import type { BrandEntry, RiskClass, SignalId } from './types';
 
+/** Shared deployed backend origin. Keep popup and service-worker routes in sync. */
+export const BACKEND_ORIGIN = 'http://18.220.29.188:8787';
+
 export const LIMITS = {
   visibleTextChars: 20_000,
   headings: 30,

@@ -12,12 +12,15 @@ not from the pages being served locally.
 
 ## Explanation UI checks
 
-Start the local explanation backend with `npm run backend`. For each page,
-open the popup and click *Explain this result*. Verify that:
+Ensure the configured backend is reachable. The checked-in build uses the
+AWS-hosted backend; for local backend testing, update `BACKEND_ORIGIN`, rebuild,
+and start it with `npm run backend`. For each page, open the popup and click
+*Explain this result*. Verify that:
 
 - the button is disabled while *Generating explanation...* is displayed and
   changes to *Regenerate explanation* after a result appears;
-- the output is labelled *Evidence-based local explanation*;
+- an Ollama response is labelled *Evidence-based explanation (AI-polished
+  summary)*, while a fallback is labelled *Evidence-based template explanation*;
 - the explanation is based only on the detected structured findings;
 - *Evidence citations* expands to show the signal id, description, and exact
   supporting evidence for every detected signal; and
@@ -105,8 +108,8 @@ both expected.
 
 ## Threat-intelligence UI checks
 
-With `npm run backend` running and the local feed loaded, the popup should show
-`Checking PhishTank...` without delaying the initial score. It should then show
+With the configured backend reachable and its feeds loaded, the popup should show
+`Checking PhishTank, URLhaus, and OpenPhish...` without delaying the initial score. It should then show
 `No match found in the bundled snapshot` for these harmless local fixtures. If
 the backend or snapshot is unavailable, it should show `PhishTank lookup unavailable` while
 preserving the local score and warnings.
@@ -117,8 +120,9 @@ must state that it did not independently increase the score. No-match wording
 must not claim the page is safe.
 
 The normal `npm run backend` command overlays safe synthetic PhishTank and
-URLhaus records for the presentation scenarios below onto its real local feed
-indexes. The optional `npm run backend:demo` alias behaves the same way. The
+URLhaus records for the presentation scenarios below onto its feed indexes.
+The AWS deployment should use the same presentation fixtures after this revision is deployed. The optional
+`npm run backend:demo` alias behaves the same way. The
 demo records point only at `.localhost` pages and never serve a payload.
 
 ## Presentation threat-intelligence scenarios
@@ -153,12 +157,21 @@ Open `http://reputation-lab.localhost:8000/vendor-status.html`.
 - Both cards explicitly say that hostname-only findings did not independently
   increase the score. No scored threat-intelligence signal is added.
 
+### 9. openphish-demo.html — OpenPhish exact URL
+
+Open `http://localhost:8000/openphish-demo.html`.
+
+- Initial local result: **Low**, driven by the password field and any weak page-text indicators.
+- Enriched result: higher risk after the exact URL matches the safe synthetic OpenPhish fixture.
+- The popup shows an OpenPhish exact-match card and adds one `known-malicious-url` signal.
+- If the same URL appears in both OpenPhish and PhishTank, the signal is still scored only once.
+
 ## Proactive link-protection scenario
 
-### 9. link-protection.html -- three protection levels and dynamic rescanning
+### 10. link-protection.html -- three protection levels and dynamic rescanning
 
 Open `http://social-feed.localhost:8000/link-protection.html` with both the
-test-page server and local backend running. The page itself should remain
+test-page server and configured backend available. The page itself should remain
 **Low** risk; the demonstration is about individual outbound links.
 
 - **Safe or unknown:** the Riverside Garden Club destination receives no icon
@@ -176,4 +189,4 @@ test-page server and local backend running. The page itself should remain
 
 The presentation fixture uses no live malicious destination. The dynamic
 short link has a page-level click handler that prevents navigation; the local
-backend checks only its in-memory indexes and never opens it.
+  backend checks only its in-memory indexes and never opens it.

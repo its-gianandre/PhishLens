@@ -34,9 +34,20 @@ function summary(findings: ThreatIntelFinding[]): ThreatIntelSummary {
 
 describe('threat-intel signal conversion', () => {
   it('emits one scored signal for duplicate exact findings', () => {
-    const signals = threatIntelToSignals(summary([finding(), finding()]));
+    const signals = threatIntelToSignals(summary([
+      finding(),
+      finding({ provider: 'openphish', targetBrand: null }),
+    ]));
     expect(signals).toHaveLength(1);
     expect(signals[0].id).toBe('known-malicious-url');
+    expect(signals[0].evidence).toMatch(/PhishTank and OpenPhish/);
+  });
+
+  it('scores an exact OpenPhish match as known phishing', () => {
+    const signals = threatIntelToSignals(summary([
+      finding({ provider: 'openphish', targetBrand: null }),
+    ]));
+    expect(signals.map((signal) => signal.id)).toEqual(['known-malicious-url']);
   });
 
   it('does not score hostname-only findings', () => {

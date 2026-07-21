@@ -6,8 +6,8 @@ import type { Signal, ThreatIntelSummary } from '../shared/types';
  * Only an exact verified URL match affects scoring in this first version.
  */
 export function threatIntelToSignals(summary: ThreatIntelSummary): Signal[] {
-  const phishtankExact = summary.findings.find((finding) => (
-    finding.provider === 'phishtank' &&
+  const phishingExact = summary.findings.filter((finding) => (
+    (finding.provider === 'phishtank' || finding.provider === 'openphish') &&
     finding.available &&
     finding.matched &&
     finding.category === 'phishing' &&
@@ -24,13 +24,16 @@ export function threatIntelToSignals(summary: ThreatIntelSummary): Signal[] {
   ));
 
   const signals: Signal[] = [];
-  if (phishtankExact) {
-    const target = phishtankExact.targetBrand ? ` Target: ${phishtankExact.targetBrand}` : '';
+  if (phishingExact.length) {
+    const providers = [...new Set(phishingExact.map((finding) => finding.provider))]
+      .map((provider) => provider === 'phishtank' ? 'PhishTank' : 'OpenPhish');
+    const targetBrand = phishingExact.find((finding) => finding.targetBrand)?.targetBrand;
+    const target = targetBrand ? ` Target: ${targetBrand}` : '';
     signals.push(makeSignal(
       'known-malicious-url',
       'threat-intel',
-      'The exact URL appears in the PhishTank verified phishing database',
-      `PhishTank exact URL match.${target}`,
+      'The exact URL appears in a known phishing feed',
+      `${providers.join(' and ')} exact URL match.${target}`,
     ));
   }
   if (urlhausExact) {

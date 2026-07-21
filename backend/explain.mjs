@@ -6,8 +6,9 @@
  * change the score, invent signals, invent domain-age/reputation data, or
  * declare a site malicious without evidence.
  *
- * Explanations are generated locally from validated signal templates. No
- * external model or paid API is required.
+ * Explanations are generated from validated signal templates. An optional
+ * Ollama model may rewrite only the summary; the score, reasons, recommended
+ * action, limitations, and citations remain deterministic.
  */
 
 const VALID_CLASSIFICATIONS = new Set(['Low', 'Caution', 'High', 'Critical']);
@@ -16,14 +17,12 @@ const MAX_SIGNALS = 32;
 const MAX_STRING = 300;
 
 // Optional: an Ollama server that rewrites the deterministic summary in more
-// natural language. Only enabled when OLLAMA_URL is set (see backend/README
-// or the systemd unit on the EC2 host). When unset or unreachable, `explain()`
-// falls back to the local, template-only summary below.
-const OLLAMA_URL = process.env.OLLAMA_URL ?? '';
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? 'llama3.2:3b';
-// Generous timeout: this runs on a small CPU-only box, where a 3B model can
-// take 20-30s per explanation. The popup already shows a "Generating..." state.
-const OLLAMA_TIMEOUT_MS = 45_000;
+// natural language. Only enabled when OLLAMA_URL is set. When unset or
+// unreachable, `explain()` falls back to the template-only summary below.
+const DEFAULT_OLLAMA_MODEL = 'llama3.2:3b';
+// Generous timeout for CPU-backed cloud deployments. The popup already shows
+// a "Generating..." state and allows slightly longer than the backend here.
+const DEFAULT_OLLAMA_TIMEOUT_MS = 45_000;
 
 /** Strip control characters and cap length. Applied to every incoming string. */
 export function sanitizeString(value) {
@@ -176,31 +175,40 @@ function buildOllamaPrompt(request, reasons) {
   return lines.join('\n');
 }
 
-async function generateOllamaSummary(request, reasons) {
-  if (!OLLAMA_URL) return null;
+async function generateOllamaSummary(request, reasons, options = {}) {
+  const ollamaUrl = String(options.ollamaUrl ?? process.env.OLLAMA_URL ?? '')
+    .trim()
+    .replace(/\/+$/, '');
+  if (!ollamaUrl) return null;
+
+  const ollamaModel = options.ollamaModel ?? process.env.OLLAMA_MODEL ?? DEFAULT_OLLAMA_MODEL;
+  const timeoutMs = options.ollamaTimeoutMs ?? DEFAULT_OLLAMA_TIMEOUT_MS;
+  const fetchImpl = options.fetchImpl ?? globalThis.fetch;
   try {
-    const response = await fetch(`${OLLAMA_URL}/api/generate`, {
+    const response = await fetchImpl(`${ollamaUrl}/api/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: OLLAMA_MODEL,
+        model: ollamaModel,
         prompt: buildOllamaPrompt(request, reasons),
         stream: false,
         options: { temperature: 0.2, num_predict: 220 },
       }),
-      signal: AbortSignal.timeout(OLLAMA_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (!response.ok) return null;
     const body = await response.json();
-    return sanitizeString(body?.response) || null;
+    return typeof body?.response === 'string' ? sanitizeString(body.response) || null : null;
   } catch {
     return null;
   }
 }
 
-export async function explain(request) {
+export async function explain(request, options = {}) {
   const sanitized = sanitizeRequest(request);
   const base = localExplanation(sanitized);
-  const llmSummary = await generateOllamaSummary(sanitized, base.reasons);
-  return llmSummary ? { ...base, summary: llmSummary } : base;
+  const llmSummary = await generateOllamaSummary(sanitized, base.reasons, options);
+  return llmSummary
+    ? { ...base, summary: llmSummary, summarySource: 'ollama' }
+    : { ...base, summarySource: 'local-template' };
 }

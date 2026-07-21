@@ -1,4 +1,9 @@
 import { normalizeUrl } from '../normalize-url.mjs';
+
+const FEED_URL = 'https://www.openphish.com/feed.txt';
+const DOWNLOAD_TIMEOUT_MS = 15_000;
+const MAX_DOWNLOAD_BYTES = 10 * 1024 * 1024;
+
 function emptyFinding(available) {
   return {
     provider: 'openphish',
@@ -17,7 +22,7 @@ function emptyFinding(available) {
   };
 }
 
-function matchedFinding(metadata, matchType) {
+function matchedFinding(matchType) {
   return {
     provider: 'openphish',
     available: true,
@@ -28,8 +33,8 @@ function matchedFinding(metadata, matchType) {
     targetBrand: null,
     referenceUrl: null,
     verificationTime: null,
-    submissionTime: metadata.submissionTime,
-    status: 'online',
+    submissionTime: null,
+    status: null,
     threat: 'phishing',
     tags: ['phishing'],
   };
@@ -52,10 +57,8 @@ export function buildOpenPhishIndex(textData) {
     try {
       const normalizedUrl = normalizeUrl(rawUrl);
       const hostname = new URL(normalizedUrl).hostname;
-      const metadata = { submissionTime: new Date().toISOString() };
-
-      exactUrls.set(normalizedUrl, metadata);
-      if (!hostnames.has(hostname)) hostnames.set(hostname, metadata);
+      exactUrls.set(normalizedUrl, true);
+      if (!hostnames.has(hostname)) hostnames.set(hostname, true);
       acceptedRecords += 1;
     } catch {
       // Skip malformed records safely
@@ -73,12 +76,26 @@ export function buildOpenPhishIndex(textData) {
 }
 
 export async function fetchOpenPhishFeed(fetchImpl = fetch) {
-  const response = await fetchImpl('https://www.openphish.com/feed.txt', {
-    headers: { 'User-Agent': 'PhishLens/0.1 threat-intelligence updater' },
-    signal: AbortSignal.timeout(15000),
-  });
+  let response;
+  try {
+    response = await fetchImpl(FEED_URL, {
+      headers: { 'User-Agent': 'PhishLens/0.1 threat-intelligence updater' },
+      signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS),
+    });
+  } catch {
+    throw new Error('OpenPhish download failed');
+  }
   if (!response.ok) throw new Error(`OpenPhish download returned HTTP ${response.status}`);
-  return await response.text();
+  const declaredSize = Number(response.headers.get('content-length'));
+  if (Number.isFinite(declaredSize) && declaredSize > MAX_DOWNLOAD_BYTES) {
+    throw new Error('OpenPhish download exceeds the 10 MB safety limit');
+  }
+
+  const body = Buffer.from(await response.arrayBuffer());
+  if (body.byteLength > MAX_DOWNLOAD_BYTES) {
+    throw new Error('OpenPhish download exceeds the 10 MB safety limit');
+  }
+  return body.toString('utf8');
 }
 
 export function createOpenPhishProvider(index) {
@@ -87,11 +104,11 @@ export function createOpenPhishProvider(index) {
       if (!index) return emptyFinding(false);
       try {
         const normalizedUrl = normalizeUrl(rawUrl);
-        const exact = index.exactUrls.get(normalizedUrl);
-        if (exact) return matchedFinding(exact, 'exact-url');
+        const exact = index.exactUrls.has(normalizedUrl);
+        if (exact) return matchedFinding('exact-url');
 
-        const hostnameMatch = index.hostnames.get(new URL(normalizedUrl).hostname);
-        if (hostnameMatch) return matchedFinding(hostnameMatch, 'hostname');
+        const hostnameMatch = index.hostnames.has(new URL(normalizedUrl).hostname);
+        if (hostnameMatch) return matchedFinding('hostname');
       } catch {}
       return emptyFinding(true);
     },
