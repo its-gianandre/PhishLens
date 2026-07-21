@@ -1,5 +1,4 @@
 import { normalizeUrl } from '../normalize-url.mjs';
-
 function emptyFinding(available) {
   return {
     provider: 'openphish',
@@ -48,7 +47,7 @@ export function buildOpenPhishIndex(textData) {
   const lines = textData.split('\n');
   for (const line of lines) {
     const rawUrl = line.trim();
-    if (!rawUrl || rawUrl.startswith('#')) continue;
+    if (!rawUrl || rawUrl.startsWith('#')) continue;
 
     try {
       const normalizedUrl = normalizeUrl(rawUrl);

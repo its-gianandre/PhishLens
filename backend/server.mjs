@@ -163,7 +163,7 @@ export function createBackendServer() {
   });
 }
 
-export async function startBackend(port = PORT, threatIntelOptions = { includeDemoFixtures: true }) {
+export async function startBackend(port = PORT, threatIntelOptions = { includeDemoFixtures: true, includeOpenPhish: true }) {
   const threatIntel = await initializeThreatIntel(threatIntelOptions);
   const server = createBackendServer();
   await new Promise((resolve) => server.listen(port, '127.0.0.1', resolve));

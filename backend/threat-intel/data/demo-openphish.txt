@@ -1,0 +1,2 @@
+http://localhost:8000/openphish-demo.html
+http://127.0.0.1:8000/openphish-demo.html

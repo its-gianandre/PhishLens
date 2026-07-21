@@ -28,6 +28,9 @@ const DEMO_PHISHTANK_PATH = new URL('./data/demo-phishtank.json', import.meta.ur
 const DEMO_URLHAUS_PATH = fileURLToPath(
   new URL('./data/demo-urlhaus.csv', import.meta.url),
 );
+const DEMO_OPENPHISH_PATH = fileURLToPath(
+  new URL('./data/demo-openphish.txt', import.meta.url),
+);
 export const SNAPSHOT_DATE = '2026-07-16';
 
 function mergeIndexes(base, overlay) {
@@ -45,13 +48,15 @@ function mergeIndexes(base, overlay) {
 }
 
 async function loadDemoIndexes() {
-  const [phishtankJson, urlhausCsv] = await Promise.all([
+  const [phishtankJson, urlhausCsv, openphishTxt] = await Promise.all([
     readFile(DEMO_PHISHTANK_PATH, 'utf8'),
     readFile(DEMO_URLHAUS_PATH, 'utf8'),
+    readFile(DEMO_OPENPHISH_PATH, 'utf8').catch(() => ''),
   ]);
   return {
     phishtank: buildPhishTankIndex(JSON.parse(phishtankJson)),
     urlhaus: buildUrlhausIndex(urlhausCsv),
+    openphish: buildOpenPhishIndex(openphishTxt),
   };
 }
 
@@ -207,20 +212,38 @@ async function initializeUrlhaus(options, initializedAt, demoIndex) {
   }
 }
 
-async function initializeOpenPhish(options, initializedAt) {
+async function initializeOpenPhish(options, initializedAt, demoIndex) {
+  if (!options.includeOpenPhish) {
+    state.openphish = emptyProviderState(createOpenPhishProvider(null));
+    return;
+  }
   try {
     const textData = await fetchOpenPhishFeed(options.fetchImpl);
-    const index = buildOpenPhishIndex(textData);
+    const baseIndex = buildOpenPhishIndex(textData);
+    const index = mergeIndexes(baseIndex, demoIndex);
+    const source = demoIndex ? 'live-download+demo-fixtures' : 'live-download';
     state.openphish = {
       available: true,
       index,
       provider: createOpenPhishProvider(index),
       initializedAt,
       updatedAt: initializedAt,
-      source: 'live-download',
+      source,
       error: null,
     };
   } catch (error) {
+    if (demoIndex) {
+      state.openphish = {
+        available: true,
+        index: demoIndex,
+        provider: createOpenPhishProvider(demoIndex),
+        initializedAt,
+        updatedAt: initializedAt,
+        source: 'demo-fixtures-fallback',
+        error: String(error?.message ?? error),
+      };
+      return;
+    }
     state.openphish = {
       ...emptyProviderState(createOpenPhishProvider(null)),
       initializedAt,
@@ -241,7 +264,7 @@ export async function initializeThreatIntel(options = {}) {
       demoIndexes?.phishtank,
     ),
     initializeUrlhaus(options, initializedAt, demoIndexes?.urlhaus),
-    initializeOpenPhish(options, initializedAt),
+    initializeOpenPhish(options, initializedAt, demoIndexes?.openphish),
   ]);
   return getThreatIntelService().health();
 }
@@ -287,10 +310,12 @@ export function getThreatIntelService() {
       } catch {
         findings.push(unavailableUrlhausFinding());
       }
-      try {
-        findings.push(state.openphish.provider.lookup(rawUrl));
-      } catch {
-        findings.push(unavailableOpenPhishFinding());
+      if (state.openphish.available) {
+        try {
+          findings.push(state.openphish.provider.lookup(rawUrl));
+        } catch {
+          findings.push(unavailableOpenPhishFinding());
+        }
       }
       return {
         status: findings.some((finding) => finding.available) ? 'complete' : 'unavailable',
