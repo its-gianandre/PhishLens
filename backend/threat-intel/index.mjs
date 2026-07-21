@@ -11,6 +11,12 @@ import {
   createUrlhausProvider,
   unavailableUrlhausFinding,
 } from './urlhaus/provider.mjs';
+import {
+  buildOpenPhishIndex,
+  fetchOpenPhishFeed,
+  createOpenPhishProvider,
+  unavailableOpenPhishFinding,
+} from './providers/openphish.mjs';
 
 export const DEFAULT_FEED_PATH = fileURLToPath(
   new URL('./data/phishtank-snapshot-2026-07-16.json.gz', import.meta.url),
@@ -65,6 +71,7 @@ let state = {
   initializedAt: null,
   phishtank: emptyProviderState(createPhishTankProvider(null)),
   urlhaus: emptyProviderState(createUrlhausProvider(null)),
+  openphish: emptyProviderState(createOpenPhishProvider(null)),
 };
 
 async function initializePhishTank(feedPath, initializedAt, records, demoIndex) {
@@ -200,6 +207,28 @@ async function initializeUrlhaus(options, initializedAt, demoIndex) {
   }
 }
 
+async function initializeOpenPhish(options, initializedAt) {
+  try {
+    const textData = await fetchOpenPhishFeed(options.fetchImpl);
+    const index = buildOpenPhishIndex(textData);
+    state.openphish = {
+      available: true,
+      index,
+      provider: createOpenPhishProvider(index),
+      initializedAt,
+      updatedAt: initializedAt,
+      source: 'live-download',
+      error: null,
+    };
+  } catch (error) {
+    state.openphish = {
+      ...emptyProviderState(createOpenPhishProvider(null)),
+      initializedAt,
+      error: String(error?.message ?? error),
+    };
+  }
+}
+
 export async function initializeThreatIntel(options = {}) {
   const initializedAt = Date.now();
   const demoIndexes = options.includeDemoFixtures ? await loadDemoIndexes() : null;
@@ -212,6 +241,7 @@ export async function initializeThreatIntel(options = {}) {
       demoIndexes?.phishtank,
     ),
     initializeUrlhaus(options, initializedAt, demoIndexes?.urlhaus),
+    initializeOpenPhish(options, initializedAt),
   ]);
   return getThreatIntelService().health();
 }
@@ -234,12 +264,13 @@ export function getThreatIntelService() {
     health() {
       const phishtank = providerHealth(state.phishtank, { snapshotDate: SNAPSHOT_DATE });
       const urlhaus = providerHealth(state.urlhaus);
+      const openphish = providerHealth(state.openphish);
       return {
-        available: phishtank.available || urlhaus.available,
-        records: phishtank.records + urlhaus.records,
-        hostnames: phishtank.hostnames + urlhaus.hostnames,
+        available: phishtank.available || urlhaus.available || openphish.available,
+        records: phishtank.records + urlhaus.records + openphish.records,
+        hostnames: phishtank.hostnames + urlhaus.hostnames + openphish.hostnames,
         initializedAt: state.initializedAt,
-        providers: { phishtank, urlhaus },
+        providers: { phishtank, urlhaus, openphish },
       };
     },
 
@@ -256,6 +287,11 @@ export function getThreatIntelService() {
       } catch {
         findings.push(unavailableUrlhausFinding());
       }
+      try {
+        findings.push(state.openphish.provider.lookup(rawUrl));
+      } catch {
+        findings.push(unavailableOpenPhishFinding());
+      }
       return {
         status: findings.some((finding) => finding.available) ? 'complete' : 'unavailable',
         checkedAt,
@@ -270,5 +306,6 @@ export function resetThreatIntelForTests() {
     initializedAt: null,
     phishtank: emptyProviderState(createPhishTankProvider(null)),
     urlhaus: emptyProviderState(createUrlhausProvider(null)),
+    openphish: emptyProviderState(createOpenPhishProvider(null)),
   };
 }
