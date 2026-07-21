@@ -109,7 +109,7 @@ both expected.
 ## Threat-intelligence UI checks
 
 With the configured backend reachable and its feeds loaded, the popup should show
-`Checking PhishTank, URLhaus, and OpenPhish...` without delaying the initial score. For a URL
+`Checking threat intelligence feeds...` without delaying the initial score. For a URL
 with no provider matches, it should then show one `Nothing to show from threat intelligence
 feeds` card. Providers with no match or unavailable data remain hidden. If one or more providers
 report a match, only those provider cards appear while the local score and warnings remain active.
@@ -119,15 +119,35 @@ normal deterministic rescoring. A hostname-only match is informational and
 must state that it did not independently increase the score. No-match wording
 must not claim the page is safe.
 
-The normal `npm run backend` command overlays safe synthetic PhishTank and
-URLhaus records for the presentation scenarios below onto its feed indexes.
+The normal `npm run backend` command overlays safe synthetic records for the
+individual presentation scenarios below onto its feed indexes. The combined
+showcase is fully local: the extension carries a localhost-only presentation
+overlay for PhishTank, URLhaus, and OpenPhish plus a localhost-only Block List
+Project entry. It therefore does not require an AWS change or a live-feed hit.
 The AWS deployment should use the same presentation fixtures after this revision is deployed. The optional
 `npm run backend:demo` alias behaves the same way. The
 demo records point only at `.localhost` pages and never serve a payload.
 
 ## Presentation threat-intelligence scenarios
 
-### 6. verified-apple-id.html — PhishTank exact URL
+### 6. threat-intel-showcase.html — all four feeds together
+
+Open `http://intel-showcase.localhost:8000/threat-intel-showcase.html`.
+
+- Initial local result: **Low** (0), because the informational page contains no
+  phishing behavior or suspicious form.
+- Enriched result: **Critical**, after the safe presentation fixtures match.
+- The popup displays cards for PhishTank, URLhaus, OpenPhish, and Block List
+  Project at the same time.
+- PhishTank, URLhaus, and OpenPhish report exact URL matches. Block List Project
+  reports a hostname match from the bundled local fixture.
+- Both `known-malicious-url` and `known-malware-url` signals appear, while the
+  duplicate phishing providers are scored only once.
+
+This is the recommended page for recording the threat-intelligence portion of
+the presentation video.
+
+### 7. verified-apple-id.html — PhishTank exact URL
 
 Open `http://signin-portal.localhost:8000/verified-apple-id.html`.
 
@@ -137,7 +157,7 @@ Open `http://signin-portal.localhost:8000/verified-apple-id.html`.
 - The popup shows `known-malicious-url`, High confidence, Apple as the target,
   and a verification time. URLhaus shows no match.
 
-### 7. critical-browser-update.html — URLhaus exact active URL
+### 8. critical-browser-update.html — URLhaus exact active URL
 
 Open `http://software-update.localhost:8000/critical-browser-update.html`.
 
@@ -148,27 +168,35 @@ Open `http://software-update.localhost:8000/critical-browser-update.html`.
 - The popup shows `known-malware-url`, status `online`, threat
   `malware_download`, and the tags `exe` and `FakeUpdate`.
 
-### 8. vendor-status.html — both providers, hostname only
+### 9. blocklist-demo.html — Block List Project domain match
 
-Open `http://reputation-lab.localhost:8000/vendor-status.html`.
+Open `http://blocklist-demo.localhost:8000/blocklist-demo.html`.
 
-- Initial and enriched result: **Low** (0), with no local indicators.
-- PhishTank and URLhaus each report other known URLs on the hostname.
-- Both cards explicitly say that hostname-only findings did not independently
-  increase the score. No scored threat-intelligence signal is added.
+- Initial local result: **Low** (0), because the page contains no suspicious
+  form, download, brand claim, or manipulative language.
+- Enriched result: **Caution** (30) after its exact hostname matches the local
+  Block List Project presentation fixture.
+- Only the Block List Project provider card appears. It identifies an exact
+  hostname match, High confidence, and that the check happened locally.
+- One `known-malicious-url` signal is added; no remote backend or AWS change is
+  required for the demonstration.
 
-### 9. openphish-demo.html — OpenPhish exact URL
+### 10. openphish-demo.html — OpenPhish exact URL
 
 Open `http://localhost:8000/openphish-demo.html`.
 
 - Initial local result: **Low**, driven by the password field and any weak page-text indicators.
 - Enriched result: higher risk after the exact URL matches the safe synthetic OpenPhish fixture.
 - The popup shows an OpenPhish exact-match card and adds one `known-malicious-url` signal.
+- The card distinguishes the feed evidence from the page evidence and calls out
+  the password request plus JavaScript-handled form as the specific concern.
+- The match is a localhost-only presentation overlay, so it still appears when
+  the remote backend is unavailable and does not alter the real OpenPhish feed.
 - If the same URL appears in both OpenPhish and PhishTank, the signal is still scored only once.
 
 ## Proactive link-protection scenario
 
-### 10. link-protection.html -- three protection levels and dynamic rescanning
+### 11. link-protection.html -- three protection levels and dynamic rescanning
 
 Open `http://social-feed.localhost:8000/link-protection.html` with both the
 test-page server and configured backend available. The page itself should remain

@@ -21,7 +21,11 @@ function exactActiveThreat(findings: ThreatIntelFinding[]): boolean {
   return findings.some((finding) => (
     finding.available &&
     finding.matched &&
-    finding.matchType === 'exact-url' &&
+    (
+      finding.matchType === 'exact-url' ||
+      (finding.provider === 'blocklist-project' &&
+        (finding.matchType === 'hostname' || finding.matchType === 'registrable-domain'))
+    ) &&
     (finding.category === 'phishing' ||
       (finding.category === 'malware' && finding.status?.toLowerCase() === 'online'))
   ));
@@ -29,7 +33,10 @@ function exactActiveThreat(findings: ThreatIntelFinding[]): boolean {
 
 function hostnameThreat(findings: ThreatIntelFinding[]): boolean {
   return findings.some((finding) => (
-    finding.available && finding.matched && finding.matchType === 'hostname'
+    finding.available &&
+    finding.matched &&
+    finding.provider !== 'blocklist-project' &&
+    finding.matchType === 'hostname'
   ));
 }
 

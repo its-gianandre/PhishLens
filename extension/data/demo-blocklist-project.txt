@@ -1,0 +1,4 @@
+# Safe synthetic Block List Project records for local presentation pages.
+# These localhost entries are not sourced from the upstream blocklist.
+blocklist-demo.localhost
+intel-showcase.localhost

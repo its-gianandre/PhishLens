@@ -25,5 +25,6 @@ await build({
 await cp(fromRoot('extension', 'manifest.json'), join(outdir, 'manifest.json'));
 await cp(fromRoot('extension', 'popup', 'popup.html'), join(outdir, 'popup.html'));
 await cp(fromRoot('extension', 'popup', 'popup.css'), join(outdir, 'popup.css'));
+await cp(fromRoot('extension', 'data'), join(outdir, 'data'), { recursive: true });
 
 console.log('Built extension into ./dist — load it via chrome://extensions → "Load unpacked" → select the dist folder.');

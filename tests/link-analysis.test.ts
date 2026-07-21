@@ -76,6 +76,19 @@ describe('embedded-link assessment', () => {
     expect(result.score).toBe(80);
   });
 
+  it('blocks a local Block List Project domain match', () => {
+    const result = assessLink(candidate(), summary([finding({
+      provider: 'blocklist-project',
+      matched: true,
+      category: 'phishing',
+      matchType: 'hostname',
+      confidence: 'high',
+      status: 'listed',
+    })]));
+    expect(result.risk).toBe('high');
+    expect(result.score).toBe(80);
+  });
+
   it('uses a hostname-only feed finding as a non-blocking warning', () => {
     const result = assessLink(candidate(), summary([finding({
       matched: true,

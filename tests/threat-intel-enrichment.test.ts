@@ -50,6 +50,21 @@ describe('threat-intel signal conversion', () => {
     expect(signals.map((signal) => signal.id)).toEqual(['known-malicious-url']);
   });
 
+  it('scores and deduplicates a local Block List Project domain match', () => {
+    const signals = threatIntelToSignals(summary([
+      finding(),
+      finding({
+        provider: 'blocklist-project',
+        matchType: 'hostname',
+        targetBrand: null,
+        status: 'listed',
+      }),
+    ]));
+    expect(signals).toHaveLength(1);
+    expect(signals[0].id).toBe('known-malicious-url');
+    expect(signals[0].evidence).toMatch(/PhishTank and Block List Project/);
+  });
+
   it('does not score hostname-only findings', () => {
     expect(threatIntelToSignals(summary([
       finding({ matchType: 'hostname', confidence: 'medium' }),

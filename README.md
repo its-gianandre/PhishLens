@@ -36,6 +36,11 @@ Load the extension: `chrome://extensions` → enable **Developer mode** →
 `http://localhost:8000/` and click through the test pages
 (expectations documented in `test-pages/EXPECTED.md`).
 
+For a presentation-ready view of every threat-intelligence provider at once,
+open `http://intel-showcase.localhost:8000/threat-intel-showcase.html`. Its
+matches are explicitly scoped to this harmless localhost fixture, so the
+showcase works without changing or redeploying the AWS service.
+
 ## AWS-hosted explanations
 
 The extension is configured to call the backend at `http://18.220.29.188:8787`.
@@ -69,18 +74,43 @@ The extension continues to use `BACKEND_ORIGIN` from
 `extension/shared/constants.ts`; change that value and rebuild only when you
 specifically want the extension to exercise a local backend.
 
-## Backend threat intelligence
+## Threat intelligence
 
-PhishLens combines three independent server-side indexes:
+PhishLens combines one extension-local domain list with three optional server-side indexes:
+
+- **Block List Project** identifies phishing hostnames from a bundled domain-only snapshot.
+  Lookups happen entirely inside the extension and continue to work without the backend.
 
 - **PhishTank** identifies verified phishing URLs from the bundled immutable snapshot.
 - **URLhaus** identifies malware-distribution URLs from an authenticated recent CSV export.
 - **OpenPhish** identifies phishing URLs from its public community feed, refreshed when the
   backend starts and cached for offline fallback.
 
-The browser extension never contains either provider credential and never visits a URL from a
-feed. It sends a privacy-sanitized URL only to the configured backend, which performs index
-lookups without visiting the submitted destination.
+The extension also uses the complete Public Suffix List, including private hosting suffixes, to
+identify registrable domains correctly for brand checks, trusted-domain overrides, forms, and
+link analysis. The PSL and Block List Project snapshot are packaged data, not runtime services;
+neither requires an API key, AWS access, or a network request while browsing.
+
+### Local dataset updates
+
+The committed Block List Project snapshot is generated from its domain-only phishing list and
+validated before it can replace the previous copy. Refresh it deliberately before an extension
+release:
+
+```bash
+npm run datasets:update
+npm run build
+```
+
+The generated file records its source, retrieval time, SHA-256 hash, license, and entry count.
+Malformed, empty, or oversized downloads are rejected. Exact hostname and parent-domain matches
+can contribute the existing phishing-feed signal and can stop a known-phishing link; duplicate
+matches from PhishTank or OpenPhish still produce only one scored signal. The popup displays the
+Block List Project card only when it reports a match.
+
+The browser extension never contains provider credentials and never visits a URL from a feed.
+For the optional server-side providers, it sends a privacy-sanitized URL to the configured
+backend, which checks its indexes without visiting the submitted destination.
 
 ### URLhaus setup
 
@@ -142,10 +172,10 @@ reports whether each provider is available and the number of indexed URLs and
 hostnames without exposing feed paths.
 
 Page analysis remains in the extension and appears immediately. When known-threat lookup
-is enabled, the service worker asynchronously asks the configured backend to check
-the current URL against all available indexes. Exact matches can add a
-provider-specific deterministic signal and recalculate the score. Hostname-only
-matches are displayed as supporting information and do not independently add points.
+is enabled, the service worker checks the bundled Block List Project snapshot locally and
+asynchronously asks the configured backend for any optional server-side findings. A direct local
+domain match or exact server-side URL match can add a deterministic signal and recalculate the
+score. Supporting hostname-only findings from URL feeds do not independently add points.
 
 If the feeds or backend are unavailable, the original heuristic result remains
 active. The popup displays only providers that report an exact or hostname
@@ -177,10 +207,11 @@ are sent to the configured backend in batches and cached for 15 minutes.
 | Layer | Where | Role |
 | --- | --- | --- |
 | Evidence extraction | `extension/content/` | Collects URL, title, visible text, headings, alt text, and per-form metadata. Never collects entered values, cookies, tokens, or full HTML. |
-| Detectors | `extension/detectors/` | URL, brand-domain mismatch, sensitive forms, social-engineering language, and normalized PhishTank results. Each returns structured **evidence** (`Signal[]`), never a score. |
+| Detectors | `extension/detectors/` | URL, brand-domain mismatch, sensitive forms, social-engineering language, and normalized local/server threat-intelligence results. Each returns structured **evidence** (`Signal[]`), never a score. |
 | Scoring | `extension/scoring/calculate-risk.ts` | The **only** place evidence becomes a number: per-signal weights + combination bonuses, clamped 0–100, banded into Low <30 ≤ Caution <60 ≤ High <80 ≤ Critical. |
 | UI | `extension/popup/`, `extension/content/` | Popup with score/findings/breakdown; in-page page warnings, link markers, click interstitials, and submission interception. |
-| Backend service | `backend/` | Runs in AWS for the current build, loads PhishTank, URLhaus, and OpenPhish feeds, provides single and batch URL lookups, and returns deterministic explanations with an optional Ollama-rewritten summary. It never visits the checked URL or directly assigns a risk score. |
+| Local datasets | `extension/data/` | Bundles the Block List Project phishing snapshot; Public Suffix List data is bundled through `tldts`. Neither requires AWS at runtime. |
+| Backend service | `backend/` | Hosts optional Ollama-backed explanations and the existing PhishTank, URLhaus, and OpenPhish lookup routes. It never visits the checked URL or directly assigns a risk score. |
 
 ## Hard constraints (by design)
 
@@ -191,8 +222,9 @@ are sent to the configured backend in batches and cached for 15 minutes.
   and treated as untrusted (prompt-injection-resistant) input.
 - All webpage content is treated as attacker-controlled input
   (see `tests/adversarial.test.ts`).
-- Sanitized browsing URLs are sent only to the configured PhishLens backend for
-  index lookup; they are not sent onward to PhishTank, URLhaus, or Ollama.
+- Local Block List Project and Public Suffix List checks never leave the extension. Sanitized
+  browsing URLs used for optional server-side lookup are sent only to the configured PhishLens
+  backend; they are not sent onward to PhishTank, URLhaus, OpenPhish, or Ollama.
 
 ## Settings & privacy
 

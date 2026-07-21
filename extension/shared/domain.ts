@@ -1,4 +1,4 @@
-import { MULTI_PART_TLDS } from './constants';
+import { getDomain } from 'tldts';
 
 export function isIpAddress(hostname: string): boolean {
   const host = hostname.replace(/^\[|\]$/g, '');
@@ -17,18 +17,11 @@ export function isLoopback(hostname: string): boolean {
   );
 }
 
-/**
- * Simplified eTLD+1 extraction using a small multi-part-TLD list.
- * Good enough for the MVP; swap for the public-suffix list later if needed.
- */
+/** Resolve eTLD+1 with the full Public Suffix List, including private suffixes. */
 export function getRegistrableDomain(hostname: string): string {
   const host = hostname.toLowerCase().replace(/\.$/, '');
   if (!host || isIpAddress(host)) return host;
-  const labels = host.split('.');
-  if (labels.length <= 2) return host;
-  const lastTwo = labels.slice(-2).join('.');
-  const take = MULTI_PART_TLDS.has(lastTwo) ? 3 : 2;
-  return labels.slice(-take).join('.');
+  return getDomain(host, { allowPrivateDomains: true }) ?? host;
 }
 
 /** Number of subdomain labels in front of the registrable domain. */

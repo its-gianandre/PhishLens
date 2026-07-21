@@ -1,0 +1,60 @@
+<!doctype html>
+<!-- Harmless local presentation fixture. It contains no forms, downloads, or live threats. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Threat intelligence showcase</title>
+  <link rel="stylesheet" href="demo.css">
+  <style>
+    body { min-height: 100vh; background: #08111f; color: #f7faff; }
+    main { padding: 72px 0; }
+    .eyebrow { color: #7db2ff; font-size: 12px; font-weight: 850; letter-spacing: .16em; text-transform: uppercase; }
+    h1 { max-width: 780px; margin: 15px 0 18px; font-size: clamp(42px, 7vw, 78px); line-height: .98; letter-spacing: -.055em; }
+    .lead { max-width: 690px; margin: 0; color: #a4b3c8; font-size: 18px; line-height: 1.65; }
+    .feeds { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 46px; }
+    .feed { min-width: 0; min-height: 160px; padding: 22px; border: 1px solid rgba(255,255,255,.1); border-radius: 17px; background: #111e31; }
+    .feed span { display: inline-flex; padding: 5px 8px; border-radius: 999px; color: #9cc3ff; background: rgba(69,132,239,.16); font-size: 10px; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
+    .feed:nth-child(2) span { color: #ffbd8b; background: rgba(234,111,32,.15); }
+    .feed:nth-child(3) span { color: #f49ac8; background: rgba(236,72,153,.15); }
+    .feed:nth-child(4) span { color: #a9e5c0; background: rgba(36,161,91,.16); }
+    .feed h2 { margin: 20px 0 8px; font-size: 21px; }
+    .feed p { margin: 0; color: #8799b1; font-size: 14px; line-height: 1.5; }
+    .notice { margin-top: 28px; padding: 18px 20px; border-left: 3px solid #68a3ff; border-radius: 8px; color: #b8c7d9; background: rgba(86,145,237,.09); line-height: 1.55; }
+    @media (max-width: 900px) { .feeds { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 560px) { .feeds { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main class="page-shell">
+    <div class="eyebrow">Safe presentation fixture</div>
+    <h1>Four feeds. One clear verdict.</h1>
+    <p class="lead">Open the PhishLens popup to see every configured threat-intelligence source identify this synthetic local URL at the same time.</p>
+
+    <section class="feeds" aria-label="Threat intelligence sources demonstrated on this page">
+      <article class="feed">
+        <span>Verified phishing</span>
+        <h2>PhishTank</h2>
+        <p>Exact URL evidence from the bundled presentation overlay.</p>
+      </article>
+      <article class="feed">
+        <span>Active malware</span>
+        <h2>URLhaus</h2>
+        <p>Exact URL evidence from a safe synthetic malware record.</p>
+      </article>
+      <article class="feed">
+        <span>Phishing feed</span>
+        <h2>OpenPhish</h2>
+        <p>Exact URL evidence from the local demonstration overlay.</p>
+      </article>
+      <article class="feed">
+        <span>Domain blocklist</span>
+        <h2>Block List Project</h2>
+        <p>Hostname evidence from the extension's bundled local dataset.</p>
+      </article>
+    </section>
+
+    <p class="notice"><strong>Presentation only:</strong> this page, its host, and every matching record are harmless local fixtures. No credential form, payload, or live malicious destination is present.</p>
+  </main>
+</body>
+</html>

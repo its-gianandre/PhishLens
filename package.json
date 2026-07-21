@@ -11,6 +11,7 @@
     "test:watch": "vitest",
     "backend": "node backend/server.mjs",
     "backend:demo": "node backend/demo-server.mjs",
+    "datasets:update": "node scripts/update-local-datasets.mjs",
     "threat-intel:test-feed": "node backend/threat-intel/test-feed.mjs",
     "test-pages": "node test-pages/serve.mjs"
   },
@@ -21,5 +22,8 @@
     "jsdom": "^29.1.1",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10"
+  },
+  "dependencies": {
+    "tldts": "^7.4.9"
   }
 }

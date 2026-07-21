@@ -13,6 +13,11 @@ describe('getRegistrableDomain', () => {
     expect(getRegistrableDomain('shop.amazon.com.au')).toBe('amazon.com.au');
   });
 
+  it('handles private and deeper public suffixes from the full PSL', () => {
+    expect(getRegistrableDomain('login.customer.github.io')).toBe('customer.github.io');
+    expect(getRegistrableDomain('portal.school.k12.ma.us')).toBe('school.k12.ma.us');
+  });
+
   it('passes through bare hosts and IPs', () => {
     expect(getRegistrableDomain('localhost')).toBe('localhost');
     expect(getRegistrableDomain('192.168.1.10')).toBe('192.168.1.10');
@@ -44,5 +49,6 @@ describe('subdomainDepth', () => {
   it('counts labels before the registrable domain', () => {
     expect(subdomainDepth('example.com')).toBe(0);
     expect(subdomainDepth('a.b.c.example.com')).toBe(3);
+    expect(subdomainDepth('login.customer.github.io')).toBe(1);
   });
 });

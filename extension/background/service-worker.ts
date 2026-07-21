@@ -2,6 +2,11 @@ import { BACKEND_ORIGIN, LIMITS } from '../shared/constants';
 import { getRegistrableDomain } from '../shared/domain';
 import { loadSettings } from '../shared/settings';
 import { sanitizeLinkUrl } from '../shared/sanitize-link-url';
+import {
+  lookupLocalBlockList,
+  lookupLocalBlockListBatch,
+} from '../threat-intel/blocklist-project';
+import { getPresentationThreatIntelFindings } from '../threat-intel/presentation-fixtures';
 import type {
   AnalysisResult,
   ExtensionMessage,
@@ -96,7 +101,8 @@ function parseFinding(value: unknown): ThreatIntelFinding {
   if (
     finding.provider !== 'phishtank' &&
     finding.provider !== 'urlhaus' &&
-    finding.provider !== 'openphish'
+    finding.provider !== 'openphish' &&
+    finding.provider !== 'blocklist-project'
   ) {
     throw new Error('invalid provider');
   }
@@ -160,7 +166,7 @@ function parseThreatIntelSummary(value: unknown): ThreatIntelSummary {
   };
 }
 
-async function fetchThreatIntel(url: string): Promise<ThreatIntelSummary> {
+async function fetchBackendThreatIntel(url: string): Promise<ThreatIntelSummary> {
   const lookupUrl = sanitizeLinkUrl(url);
   if (!lookupUrl) throw new Error('unsupported threat-intel URL');
   const response = await fetch(THREAT_INTEL_URL, {
@@ -173,7 +179,7 @@ async function fetchThreatIntel(url: string): Promise<ThreatIntelSummary> {
   return parseThreatIntelSummary(await response.json());
 }
 
-async function fetchThreatIntelBatch(urls: string[]): Promise<ThreatIntelSummary[]> {
+async function fetchBackendThreatIntelBatch(urls: string[]): Promise<ThreatIntelSummary[]> {
   const response = await fetch(`${THREAT_INTEL_URL}/batch`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -186,6 +192,52 @@ async function fetchThreatIntelBatch(urls: string[]): Promise<ThreatIntelSummary
     throw new Error('invalid batch lookup response');
   }
   return body.results.map(parseThreatIntelSummary);
+}
+
+function unavailableBackendFindings(): ThreatIntelFinding[] {
+  return unavailableThreatIntel().findings.filter((finding) => (
+    finding.provider !== 'blocklist-project'
+  ));
+}
+
+function combineThreatIntel(
+  backend: ThreatIntelSummary | null,
+  local: ThreatIntelFinding,
+  url: string,
+): ThreatIntelSummary {
+  const findingsByProvider = new Map(
+    (backend?.findings ?? unavailableBackendFindings()).map((finding) => (
+      [finding.provider, finding] as const
+    )),
+  );
+  for (const finding of getPresentationThreatIntelFindings(url)) {
+    findingsByProvider.set(finding.provider, finding);
+  }
+  findingsByProvider.set(local.provider, local);
+  const findings = [...findingsByProvider.values()];
+  return {
+    status: findings.some((finding) => finding.available) ? 'complete' : 'unavailable',
+    checkedAt: Date.now(),
+    findings,
+  };
+}
+
+async function fetchThreatIntel(url: string): Promise<ThreatIntelSummary> {
+  const [backend, local] = await Promise.all([
+    fetchBackendThreatIntel(url).catch(() => null),
+    lookupLocalBlockList(url),
+  ]);
+  return combineThreatIntel(backend, local, url);
+}
+
+async function fetchThreatIntelBatch(urls: string[]): Promise<ThreatIntelSummary[]> {
+  const [backend, local] = await Promise.all([
+    fetchBackendThreatIntelBatch(urls).catch(() => null),
+    lookupLocalBlockListBatch(urls),
+  ]);
+  return urls.map((url, index) => (
+    combineThreatIntel(backend?.[index] ?? null, local[index], url)
+  ));
 }
 
 function disabledThreatIntel(): ThreatIntelSummary {

@@ -95,7 +95,11 @@ export interface ScoreLine {
   points: number;
 }
 
-export type ThreatIntelProvider = 'phishtank' | 'urlhaus' | 'openphish';
+export type ThreatIntelProvider =
+  | 'phishtank'
+  | 'urlhaus'
+  | 'openphish'
+  | 'blocklist-project';
 export type ThreatMatchType = 'exact-url' | 'hostname' | 'registrable-domain';
 
 export interface ThreatIntelFinding {

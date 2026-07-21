@@ -13,19 +13,20 @@
     h1 { max-width: 720px; margin: 14px 0 16px; font-size: clamp(42px, 7vw, 76px); line-height: .98; letter-spacing: -.055em; }
     .lead { max-width: 650px; color: #9cabc0; font-size: 18px; line-height: 1.65; }
     h2 { margin: 58px 0 18px; font-size: 17px; color: #d9e4f3; }
-    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
     .scenario-slot { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 8px; min-width: 0; }
-    .scenario-slot .card { width: 100%; }
+    .scenario-slot .card { width: 100%; height: 100%; }
     .card { display: flex; min-height: 250px; flex-direction: column; padding: 24px; border: 1px solid rgba(255,255,255,.1); border-radius: 18px; color: inherit; background: #131f32; text-decoration: none; transition: transform .18s ease, border-color .18s ease; }
     .card:hover { transform: translateY(-3px); border-color: rgba(118,168,255,.55); }
     .provider { width: max-content; padding: 6px 9px; border-radius: 999px; color: #a9c8ff; background: rgba(63,127,240,.15); font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
     .provider.malware { color: #ffbd8b; background: rgba(234,111,32,.14); }
-    .provider.host { color: #abdfc1; background: rgba(36,161,91,.14); }
+    .provider.host { display: inline-flex; justify-content: center; width: 100%; padding-inline: 6px; color: #abdfc1; background: rgba(36,161,91,.14); font-size: 9px; letter-spacing: .035em; text-align: center; white-space: nowrap; }
     .provider.openphish { color: #f472b6; background: rgba(236,72,153,.15); }
+    .provider.showcase { color: #fff; background: linear-gradient(90deg, #397ff0, #ba3c93, #27865a); }
     .card h3 { margin: 23px 0 10px; font-size: 23px; letter-spacing: -.025em; }
     .card p { margin: 0; color: #8fa0b7; line-height: 1.55; }
     .open { margin-top: auto; padding-top: 24px; color: #edf4ff; font-weight: 750; }
-    .baselines { grid-template-columns: repeat(5, 1fr); }
+    .baselines { grid-template-columns: repeat(5, minmax(0, 1fr)); }
     .feature { grid-template-columns: 1fr; }
     .feature .card { min-height: 190px; background: linear-gradient(125deg, #13294a, #182038 70%); }
     .feature .card h3 { margin-top: 18px; }
@@ -39,7 +40,7 @@
   <main class="page-shell">
     <div class="eyebrow">Presentation gallery</div>
     <h1>Threat intelligence, made visible.</h1>
-    <p class="lead">Safe, local scenarios designed to show exact URL matches, provider-specific evidence, score enrichment, and hostname-only context.</p>
+    <p class="lead">Safe, local scenarios designed to show exact URL matches, provider-specific evidence, score enrichment, and hostname-only context across every configured feed.</p>
 
     <h2>Proactive browsing shield</h2>
     <div class="grid feature">
@@ -52,6 +53,14 @@
     </div>
 
     <h2>Threat intelligence scenarios</h2>
+    <div class="grid feature" style="margin-bottom: 16px">
+      <a class="card" href="http://intel-showcase.localhost:8000/threat-intel-showcase.html">
+        <span class="provider showcase">All four feeds &middot; combined showcase</span>
+        <h3>All four feeds detect this page</h3>
+        <p>PhishTank, URLhaus, OpenPhish, and Block List Project all report a match together in one popup.</p>
+        <span class="open">Open showcase &rarr;</span>
+      </a>
+    </div>
     <div class="grid">
       <div class="scenario-slot">
         <a class="card" href="http://signin-portal.localhost:8000/verified-apple-id.html">
@@ -78,10 +87,10 @@
         </a>
       </div>
       <div class="scenario-slot">
-        <a class="card" href="http://reputation-lab.localhost:8000/vendor-status.html">
-        <span class="provider host">Multi-provider · hostname only</span>
-        <h3>Shared-host reputation</h3>
-        <p>A clean status page inherits context from other reported URLs on its host, without increasing the score.</p>
+        <a class="card" href="http://blocklist-demo.localhost:8000/blocklist-demo.html">
+        <span class="provider host">Block List Project · domain match</span>
+        <h3>Blocked phishing domain</h3>
+        <p>A clean local page receives a warning because its exact hostname appears in the bundled phishing-domain blocklist.</p>
         <span class="open">Open scenario →</span>
         </a>
       </div>

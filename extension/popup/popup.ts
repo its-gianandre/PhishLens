@@ -1,5 +1,6 @@
 import { BACKEND_ORIGIN } from '../shared/constants';
 import { loadSettings, saveSettings } from '../shared/settings';
+import { describePageThreat } from './threat-context';
 import type {
   AnalysisResult,
   ExplainRequest,
@@ -54,7 +55,7 @@ function renderThreatIntel(result: AnalysisResult): string {
   }
   if (summary.status === 'pending') {
     return `<h2>Threat intelligence</h2>
-      <div class="threat-intel"><strong>Checking PhishTank, URLhaus, and OpenPhish…</strong></div>`;
+      <div class="threat-intel"><strong>Checking threat intelligence feeds…</strong></div>`;
   }
 
   // --- PhishTank Card ---
@@ -104,9 +105,11 @@ function renderThreatIntel(result: AnalysisResult): string {
   const openphish = summary.findings.find((item) => item.provider === 'openphish');
   let openphishCard: string | null = null;
   if (openphish?.available && openphish.matched && openphish.matchType === 'exact-url') {
+    const pageThreat = describePageThreat(result.signals);
     openphishCard = `<div class="threat-intel threat-match">
       <strong>OpenPhish</strong>
-      <div>Exact phishing URL match in the OpenPhish feed</div>
+      <div>OpenPhish reports this exact page URL as phishing.</div>
+      ${pageThreat ? `<div><strong>Specific concern:</strong> ${escapeHtml(pageThreat)}</div>` : ''}
       <div>Confidence: High</div>
       ${openphish.targetBrand ? `<div>Target: ${escapeHtml(openphish.targetBrand)}</div>` : ''}
     </div>`;
@@ -118,7 +121,24 @@ function renderThreatIntel(result: AnalysisResult): string {
     </div>`;
   }
 
-  const matchedCards = [phishtankCard, urlhausCard, openphishCard].filter(Boolean).join('');
+  // --- Local Block List Project Card ---
+  const blocklist = summary.findings.find((item) => item.provider === 'blocklist-project');
+  let blocklistCard: string | null = null;
+  if (blocklist?.available && blocklist.matched) {
+    const scope = blocklist.matchType === 'hostname'
+      ? 'This exact hostname'
+      : 'A parent domain of this hostname';
+    blocklistCard = `<div class="threat-intel threat-match">
+      <strong>Block List Project</strong>
+      <div>${scope} appears in the bundled phishing-domain snapshot.</div>
+      <div>Confidence: ${blocklist.confidence === 'high' ? 'High' : 'Medium'}</div>
+      <div class="muted">Checked locally in the extension.</div>
+    </div>`;
+  }
+
+  const matchedCards = [phishtankCard, urlhausCard, openphishCard, blocklistCard]
+    .filter(Boolean)
+    .join('');
   if (!matchedCards) {
     return `<h2>Threat intelligence</h2>
       <div class="threat-intel">

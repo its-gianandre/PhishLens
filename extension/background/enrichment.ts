@@ -26,7 +26,12 @@ export function unavailableThreatIntel(checkedAt = Date.now()): ThreatIntelSumma
   return {
     status: 'unavailable',
     checkedAt,
-    findings: [finding('phishtank'), finding('urlhaus'), finding('openphish')],
+    findings: [
+      finding('phishtank'),
+      finding('urlhaus'),
+      finding('openphish'),
+      finding('blocklist-project'),
+    ],
   };
 }
 

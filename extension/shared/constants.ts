@@ -203,16 +203,6 @@ export const URL_SHORTENERS = new Set([
   'rb.gy', 'cutt.ly', 'shorturl.at',
 ]);
 
-/** Second-level public suffixes for simplified registrable-domain extraction. */
-export const MULTI_PART_TLDS = new Set([
-  'co.uk', 'org.uk', 'ac.uk', 'gov.uk', 'me.uk',
-  'com.au', 'net.au', 'org.au',
-  'co.nz', 'co.jp', 'or.jp', 'ne.jp',
-  'com.br', 'com.mx', 'com.ar',
-  'co.in', 'co.za', 'com.sg', 'com.my', 'com.hk', 'com.tw', 'com.cn',
-  'com.tr', 'co.kr',
-]);
-
 export interface LanguageRule {
   signal: SignalId;
   description: string;
