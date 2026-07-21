@@ -176,6 +176,3 @@ Augustin Birladeanu
 
 Saumit Guduguntla
 
-## Demo
-
-See [DEMO.md](DEMO.md) for the presentation sequence.
