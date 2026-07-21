@@ -23,7 +23,7 @@ import {
 } from './link-analysis';
 import { runAnalysis } from './pipeline';
 
-const THREAT_INTEL_URL = 'http://127.0.0.1:8787/threat-intel';
+const THREAT_INTEL_URL = 'http://18.220.29.188:8787/threat-intel';
 const THREAT_INTEL_TIMEOUT_MS = 3_000;
 const MAX_LINKS_PER_BATCH = 100;
 const LINK_INTEL_CACHE_MS = 15 * 60 * 1_000;
